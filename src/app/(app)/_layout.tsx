@@ -1,6 +1,6 @@
 import { Center } from "@/components/ui";
 import { useAuth } from "@/context/AuthContext";
-import { useNotifications } from "@/context/NotificationContext"; // Add this import
+import { useNotifications } from "@/context/NotificationContext";
 import { colors } from "@/theme";
 import { Redirect, Tabs } from "expo-router";
 import { ActivityIndicator, Text, useWindowDimensions } from "react-native";
@@ -11,7 +11,7 @@ const icon = (emoji: string) => () => (
 
 export default function AppLayout() {
   const { user, loading } = useAuth();
-  const { unreadCount } = useNotifications(); // Grab the live unread count
+  const { unreadCount } = useNotifications();
   const { width } = useWindowDimensions();
   const wide = width >= 900;
 
@@ -22,6 +22,8 @@ export default function AppLayout() {
       </Center>
     );
   if (!user) return <Redirect href="/login" />;
+
+  const isAdmin = user.role === "admin";
 
   return (
     <Tabs
@@ -35,33 +37,64 @@ export default function AppLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: user.role === "admin" ? "Dashboard" : "Home",
+          title: isAdmin ? "Dashboard" : "Home",
           tabBarIcon: icon("🏠"),
         }}
       />
-
-      {/* 🔔 Added Notifications Screen */}
       <Tabs.Screen
         name="notifications"
         options={{
           title: "Notifications",
           tabBarIcon: icon("🔔"),
-          tabBarBadge: unreadCount > 0 ? unreadCount : undefined, // Shows badge only if > 0
+          tabBarBadge: unreadCount > 0 ? unreadCount : undefined,
           tabBarBadgeStyle: { backgroundColor: "red", color: "white" },
         }}
       />
+
+      {/* Employee only */}
       <Tabs.Screen
         name="attendance"
-        options={{ title: "Attendance", tabBarIcon: icon("🗓️") }}
+        options={{
+          title: "Attendance",
+          tabBarIcon: icon("🗓️"),
+          href: isAdmin ? null : undefined,
+        }}
       />
       <Tabs.Screen
         name="leave"
-        options={{ title: "Leave", tabBarIcon: icon("🌴") }}
+        options={{
+          title: "Leave",
+          tabBarIcon: icon("🌴"),
+          href: isAdmin ? null : undefined,
+        }}
       />
       <Tabs.Screen
         name="progress"
-        options={{ title: "Progress", tabBarIcon: icon("📈") }}
+        options={{
+          title: "Progress",
+          tabBarIcon: icon("📈"),
+          href: isAdmin ? null : undefined,
+        }}
       />
+
+      {/* Admin only */}
+      <Tabs.Screen
+        name="employees"
+        options={{
+          title: "Employees",
+          tabBarIcon: icon("👥"),
+          href: isAdmin ? undefined : null,
+        }}
+      />
+      <Tabs.Screen
+        name="leave-review"
+        options={{
+          title: "Leave requests",
+          tabBarIcon: icon("✅"),
+          href: isAdmin ? undefined : null,
+        }}
+      />
+
       <Tabs.Screen
         name="profile"
         options={{ title: "Profile", tabBarIcon: icon("👤") }}
