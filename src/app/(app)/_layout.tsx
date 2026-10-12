@@ -50,7 +50,10 @@ export default function AppLayout() {
           tabBarBadgeStyle: { backgroundColor: "red", color: "white" },
         }}
       />
-
+      <Tabs.Screen
+        name="attendance"
+        options={{ title: "Attendance", tabBarIcon: icon("🗓️") }}
+      />
       <Tabs.Screen
         name="profile"
         options={{ title: "Profile", tabBarIcon: icon("👤") }}
