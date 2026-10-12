@@ -59,6 +59,10 @@ export default function AppLayout() {
         options={{ title: "Leave", tabBarIcon: icon("🌴") }}
       />
       <Tabs.Screen
+        name="progress"
+        options={{ title: "Progress", tabBarIcon: icon("📈") }}
+      />
+      <Tabs.Screen
         name="profile"
         options={{ title: "Profile", tabBarIcon: icon("👤") }}
       />
