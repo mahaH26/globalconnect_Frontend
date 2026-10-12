@@ -55,6 +55,10 @@ export default function AppLayout() {
         options={{ title: "Attendance", tabBarIcon: icon("🗓️") }}
       />
       <Tabs.Screen
+        name="leave"
+        options={{ title: "Leave", tabBarIcon: icon("🌴") }}
+      />
+      <Tabs.Screen
         name="profile"
         options={{ title: "Profile", tabBarIcon: icon("👤") }}
       />
