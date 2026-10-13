@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, Text, View, useWindowDimensions } from "react-native";
 import { useRouter } from "expo-router";
 import { api } from "@/lib/api";
 import {
@@ -108,6 +108,8 @@ function AlertRow({
 
 export default function AdminHome() {
   const router = useRouter();
+  const { width } = useWindowDimensions();
+  const twoColumns = width >= 1000; // wide desktop windows
   const [data, setData] = useState<Dashboard | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -130,103 +132,129 @@ export default function AdminHome() {
 
   const go = (path: string) => router.push(path as any);
 
+  const hero = (
+    <View
+      style={{
+        backgroundColor: colors.navy,
+        borderRadius: radius.lg,
+        padding: 18,
+        gap: 12,
+      }}
+    >
+      <Text style={{ color: "#C9CDE8", fontSize: 13 }}>
+        Today · {data?.date ?? "..."}
+        {data && !data.is_workday ? " (weekend)" : ""}
+      </Text>
+      <View
+        style={{
+          flexDirection: "row",
+          flexWrap: "wrap",
+          alignItems: "flex-end",
+          justifyContent: "space-between",
+          gap: 12,
+        }}
+      >
+        <View>
+          <Text style={{ color: "#fff", fontSize: 36, fontWeight: "800" }}>
+            {data?.attendance_rate == null ? "-" : `${data.attendance_rate}%`}
+          </Text>
+          <Text style={{ color: "#C9CDE8", fontSize: 14 }}>
+            {data ? `${data.present} present · ${data.late} late · ${data.absent} absent` : ""}
+          </Text>
+        </View>
+        <Button small title="View attendance" onPress={() => go("/team-attendance")} />
+      </View>
+    </View>
+  );
+
+  const overview = data ? (
+    <>
+      <Section title="Today's overview" />
+      <StatGrid>
+        <Stat label="Employees" value={data.total_employees} />
+        <Stat label="Present" value={data.present} tone="good" />
+        <Stat label="Late" value={data.late} tone="warn" />
+        <Stat label="On leave" value={data.on_leave} />
+        <Stat label="Not checked in" value={data.not_checked_in} />
+        <Stat label="Absent" value={data.absent} tone="bad" />
+      </StatGrid>
+    </>
+  ) : null;
+
+  const chart = data ? (
+    <Card>
+      <Text style={{ fontWeight: "700", color: colors.text }}>Attendance breakdown</Text>
+      <BarChart
+        items={[
+          { label: "Present", value: data.present, color: colors.success },
+          { label: "Late", value: data.late, color: colors.warning },
+          { label: "On leave", value: data.on_leave, color: colors.navy },
+          { label: "Not checked in", value: data.not_checked_in, color: "#9AA0C0" },
+          { label: "Absent", value: data.absent, color: colors.danger },
+        ]}
+      />
+    </Card>
+  ) : null;
+
+  const attention = data ? (
+    <>
+      <Section title="Needs your attention" />
+      <Card>
+        <AlertRow
+          title="Leave requests to review"
+          hint="Employees waiting for you to approve or reject their leave"
+          count={data.alerts.pending_leave_requests}
+          onPress={() => go("/leave-review")}
+        />
+        <AlertRow
+          title="Missing check-outs"
+          hint="Checked in today but did not check out, counted after work hours end"
+          count={data.alerts.missing_checkout}
+          onPress={() => go("/team-attendance")}
+        />
+        {data.alerts.unread_notifications.length > 0 ? (
+          <View style={{ gap: 6, marginTop: 8 }}>
+            <Muted>Your unread notifications</Muted>
+            {data.alerts.unread_notifications.map((n) => (
+              <Text key={n.id} style={{ color: colors.text }}>
+                • <Text style={{ fontWeight: "700" }}>{n.title}</Text>
+                {n.message || n.body ? `: ${n.message ?? n.body}` : ""}
+              </Text>
+            ))}
+            <Button
+              small
+              variant="ghost"
+              title="Open notifications"
+              onPress={() => go("/notifications")}
+            />
+          </View>
+        ) : null}
+      </Card>
+    </>
+  ) : null;
+
   return (
     <Screen onRefresh={load} refreshing={refreshing}>
       <ErrorText>{error}</ErrorText>
 
-      {/* Hero card */}
-      <View
-        style={{
-          backgroundColor: colors.navy,
-          borderRadius: radius.lg,
-          padding: 18,
-          gap: 12,
-        }}
-      >
-        <Text style={{ color: "#C9CDE8", fontSize: 13 }}>
-          Today · {data?.date ?? "..."}
-          {data && !data.is_workday ? " (weekend)" : ""}
-        </Text>
-        <View
-          style={{
-            flexDirection: "row",
-            flexWrap: "wrap",
-            alignItems: "flex-end",
-            justifyContent: "space-between",
-            gap: 12,
-          }}
-        >
-          <View>
-            <Text style={{ color: "#fff", fontSize: 36, fontWeight: "800" }}>
-              {data?.attendance_rate == null ? "-" : `${data.attendance_rate}%`}
-            </Text>
-            <Text style={{ color: "#C9CDE8", fontSize: 14 }}>
-              {data ? `${data.present} present · ${data.late} late · ${data.absent} absent` : ""}
-            </Text>
+      {twoColumns ? (
+        // Desktop: numbers and chart on the left, things to act on on the right
+        <View style={{ flexDirection: "row", gap: 16, alignItems: "flex-start" }}>
+          <View style={{ flex: 3, gap: 14 }}>
+            {hero}
+            {overview}
+            {chart}
           </View>
-          <Button small title="View attendance" onPress={() => go("/team-attendance")} />
+          <View style={{ flex: 2, gap: 14 }}>{attention}</View>
         </View>
-      </View>
-
-      {data ? (
+      ) : (
         <>
-          <Section title="Today's overview" />
-          <StatGrid>
-            <Stat label="Employees" value={data.total_employees} />
-            <Stat label="Present" value={data.present} tone="good" />
-            <Stat label="Late" value={data.late} tone="warn" />
-            <Stat label="On leave" value={data.on_leave} />
-            <Stat label="Not checked in" value={data.not_checked_in} />
-            <Stat label="Absent" value={data.absent} tone="bad" />
-          </StatGrid>
-
-          <Card>
-            <Text style={{ fontWeight: "700", color: colors.text }}>Attendance breakdown</Text>
-            <BarChart
-              items={[
-                { label: "Present", value: data.present, color: colors.success },
-                { label: "Late", value: data.late, color: colors.warning },
-                { label: "On leave", value: data.on_leave, color: colors.navy },
-                { label: "Not checked in", value: data.not_checked_in, color: "#9AA0C0" },
-                { label: "Absent", value: data.absent, color: colors.danger },
-              ]}
-            />
-          </Card>
-
-          <Section title="Needs your attention" />
-          <Card>
-            <AlertRow
-              title="Leave requests to review"
-              hint="Employees waiting for you to approve or reject their leave"
-              count={data.alerts.pending_leave_requests}
-              onPress={() => go("/leave-review")}
-            />
-            <AlertRow
-              title="Missing check-outs"
-              hint="Checked in today but did not check out, counted after work hours end"
-              count={data.alerts.missing_checkout}
-              onPress={() => go("/team-attendance")}
-            />
-            {data.alerts.unread_notifications.length > 0 ? (
-              <View style={{ gap: 6, marginTop: 8 }}>
-                <Muted>Your unread notifications</Muted>
-                {data.alerts.unread_notifications.map((n) => (
-                  <Text key={n.id} style={{ color: colors.text }}>
-                    • <Text style={{ fontWeight: "700" }}>{n.title}</Text>
-                    {n.message || n.body ? `: ${n.message ?? n.body}` : ""}
-                  </Text>
-                ))}
-                <Button
-                  small
-                  variant="ghost"
-                  title="Open notifications"
-                  onPress={() => go("/notifications")}
-                />
-              </View>
-            ) : null}
-          </Card>
+          {hero}
+          {overview}
+          {chart}
+          {attention}
         </>
-      ) : null}
+      )}
     </Screen>
   );
 }
