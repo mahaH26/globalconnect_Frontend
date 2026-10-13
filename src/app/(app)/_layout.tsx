@@ -24,6 +24,7 @@ const EMPLOYEE_NAV: NavItem[] = [
   { name: "attendance", label: "Attendance", icon: "🗓️" },
   { name: "leave", label: "Leave", icon: "🌴" },
   { name: "progress", label: "Progress", icon: "📈" },
+  { name: "insights", label: "Insights", icon: "📊" },
   { name: "chat", label: "Chat", icon: "💬" },
   { name: "profile", label: "Profile", icon: "👤" },
 ];
@@ -105,6 +106,10 @@ export default function AppLayout() {
         name="profile"
         options={{ title: "Profile", tabBarIcon: icon("👤") }}
       />
+      <Tabs.Screen
+  name="insights"
+  options={{ title: "Insights", tabBarIcon: icon("📊"), href: employeeOnly }}
+/>
 <Tabs.Screen
   name="chat"
   options={{ title: "Chat", tabBarIcon: icon("💬") }}
