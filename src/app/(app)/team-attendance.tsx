@@ -1,9 +1,28 @@
+import {
+  Avatar,
+  Badge,
+  Button,
+  Card,
+  Chips,
+  Empty,
+  ErrorText,
+  Field,
+  Muted,
+  Row,
+  Stat,
+  StatGrid,
+  Title,
+  listContent,
+  listStyle,
+  toneFor,
+} from "@/components/ui";
 import { api } from "@/lib/api";
+import { colors } from "@/theme";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
-import { FlatList, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { FlatList, Text, View } from "react-native";
 
-interface Row {
+interface AttRow {
   id: string;
   work_date: string;
   status: string;
@@ -12,7 +31,6 @@ interface Row {
   early_checkout: boolean;
   overtime_minutes: number;
   points_awarded: number;
-  distance_m: number | null;
   profiles: {
     full_name: string;
     position: string | null;
@@ -39,12 +57,16 @@ const time = (iso: string | null) =>
       })
     : "--:--";
 
-const STATUSES = ["", "present", "late"];
+const STATUS_OPTIONS = [
+  { value: "", label: "All" },
+  { value: "present", label: "Present" },
+  { value: "late", label: "Late" },
+];
 
 export default function TeamAttendanceScreen() {
   const [date, setDate] = useState(todayBahrain());
   const [status, setStatus] = useState("");
-  const [rows, setRows] = useState<Row[]>([]);
+  const [rows, setRows] = useState<AttRow[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -54,7 +76,7 @@ export default function TeamAttendanceScreen() {
       if (/^\d{4}-\d{2}-\d{2}$/.test(date)) params.push(`date=${date}`);
       if (status) params.push(`status=${status}`);
       const q = params.length ? `?${params.join("&")}` : "";
-      setRows(await api<Row[]>(`/attendance${q}`));
+      setRows(await api<AttRow[]>(`/attendance${q}`));
     } catch (e: any) {
       setError(e?.message ?? "Failed to load attendance");
     }
@@ -70,62 +92,58 @@ export default function TeamAttendanceScreen() {
 
   return (
     <FlatList
+      style={listStyle}
+      contentContainerStyle={listContent}
       data={rows}
       keyExtractor={(r) => String(r.id)}
       onRefresh={load}
       refreshing={false}
       ListHeaderComponent={
-        <View>
-          <Text>Team attendance</Text>
-          <View>
-            <TouchableOpacity onPress={() => setDate(shift(date, -1))}>
-              <Text>{"< Previous day"}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => setDate(shift(date, 1))}>
-              <Text>{"Next day >"}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => setDate(todayBahrain())}>
-              <Text>Today</Text>
-            </TouchableOpacity>
-          </View>
-          <TextInput
-            placeholder="Date (YYYY-MM-DD), empty = latest records"
-            value={date}
-            onChangeText={setDate}
-            autoCapitalize="none"
-          />
-          <View>
-            {STATUSES.map((s) => (
-              <TouchableOpacity key={s || "all"} onPress={() => setStatus(s)}>
-                <Text>
-                  {status === s ? "● " : "○ "}
-                  {s || "all"}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-          <Text>
-            {rows.length} record(s), {lateCount} late
-          </Text>
-          {error && <Text>{error}</Text>}
+        <View style={{ gap: 12, marginBottom: 14 }}>
+          <Title>Team attendance</Title>
+          <Row>
+            <Button small variant="secondary" title="‹" onPress={() => setDate(shift(date, -1))} />
+            <Field
+              containerStyle={{ flex: 1 }}
+              placeholder="YYYY-MM-DD (empty = latest)"
+              value={date}
+              onChangeText={setDate}
+              autoCapitalize="none"
+              style={{ textAlign: "center" }}
+            />
+            <Button small variant="secondary" title="›" onPress={() => setDate(shift(date, 1))} />
+          </Row>
+          <Row style={{ justifyContent: "space-between", flexWrap: "wrap" }}>
+            <Chips options={STATUS_OPTIONS} value={status} onChange={setStatus} />
+            <Button small variant="ghost" title="Today" onPress={() => setDate(todayBahrain())} />
+          </Row>
+          <StatGrid>
+            <Stat label="Records" value={rows.length} />
+            <Stat label="Late" value={lateCount} tone="warn" />
+          </StatGrid>
+          <ErrorText>{error}</ErrorText>
         </View>
       }
-      ListEmptyComponent={<Text>No records for this filter.</Text>}
+      ListEmptyComponent={<Empty text="No records for this filter." />}
       renderItem={({ item }) => (
-        <View>
-          <Text>
-            {item.profiles?.full_name ?? "Employee"} - {item.status}
-          </Text>
-          <Text>
-            {item.work_date} | In: {time(item.check_in)} | Out: {time(item.check_out)}
-          </Text>
-          <Text>
-            {item.profiles?.departments?.name ?? "No department"} | Points:{" "}
-            {item.points_awarded}
-            {item.early_checkout ? " | Early checkout" : ""}
-            {item.overtime_minutes > 0 ? ` | Overtime ${item.overtime_minutes} min` : ""}
-          </Text>
-        </View>
+        <Card style={{ marginBottom: 10, flexDirection: "row", alignItems: "center", gap: 12 }}>
+          <Avatar name={item.profiles?.full_name} />
+          <View style={{ flex: 1, gap: 2 }}>
+            <Text style={{ fontSize: 16, fontWeight: "700", color: colors.text }} numberOfLines={1}>
+              {item.profiles?.full_name ?? "Employee"}
+            </Text>
+            <Muted>
+              In {time(item.check_in)} · Out {time(item.check_out)}
+            </Muted>
+            <Muted>
+              {item.work_date} · {item.profiles?.departments?.name ?? "No department"} ·{" "}
+              {item.points_awarded} pts
+              {item.early_checkout ? " · early checkout" : ""}
+              {item.overtime_minutes > 0 ? ` · +${item.overtime_minutes} min` : ""}
+            </Muted>
+          </View>
+          <Badge text={item.status} tone={toneFor(item.status)} />
+        </Card>
       )}
     />
   );
