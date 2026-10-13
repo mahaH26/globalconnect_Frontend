@@ -15,6 +15,8 @@ const ADMIN_NAV: NavItem[] = [
   { name: "employees", label: "Employees", icon: "👥" },
   { name: "team-attendance", label: "Attendance", icon: "🗓️" },
   { name: "leave-review", label: "Leave requests", icon: "✅" },
+  { name: "reports", label: "Reports", icon: "📄" },
+  { name: "locations", label: "Locations", icon: "📍" },
   { name: "chat", label: "Chat", icon: "💬" },
   { name: "profile", label: "Profile", icon: "👤" },
 ];
@@ -107,8 +109,16 @@ export default function AppLayout() {
         options={{ title: "Profile", tabBarIcon: icon("👤") }}
       />
       <Tabs.Screen
+  name="locations"
+  options={{ title: "Locations", tabBarIcon: icon("📍"), href: adminOnly }}
+/>
+      <Tabs.Screen
   name="insights"
   options={{ title: "Insights", tabBarIcon: icon("📊"), href: employeeOnly }}
+/>
+<Tabs.Screen
+  name="reports"
+  options={{ title: "Reports", tabBarIcon: icon("📄"), href: adminOnly }}
 />
 <Tabs.Screen
   name="chat"

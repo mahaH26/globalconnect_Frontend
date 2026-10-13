@@ -88,3 +88,27 @@ export async function api<T = any>(
   if (!res.ok) throw new ApiError(data?.error ?? `Request failed (${res.status})`, res.status, data);
   return data as T;
 }
+export async function downloadFile(path: string, filename: string): Promise<void> {
+  const doc = (globalThis as any).document;
+  if (!doc) throw new ApiError('Downloads are only available in the web version.', 0);
+
+  let res = await rawFetch(path, 'GET', undefined, tokens?.access_token);
+  if (res.status === 401 && (await tryRefresh())) {
+    res = await rawFetch(path, 'GET', undefined, tokens?.access_token);
+  }
+  if (!res.ok) {
+    let data: any = null;
+    try { data = await res.json(); } catch {}
+    throw new ApiError(data?.error ?? `Download failed (${res.status})`, res.status, data);
+  }
+
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = doc.createElement('a');
+  a.href = url;
+  a.download = filename;
+  doc.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
