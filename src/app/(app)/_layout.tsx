@@ -94,6 +94,26 @@ export default function AppLayout() {
           href: isAdmin ? undefined : null,
         }}
       />
+      <Tabs.Screen
+        name="team-attendance"
+        options={{
+          title: "Attendance",
+          tabBarIcon: icon("🗓️"),
+          href: isAdmin ? undefined : null,
+        }}
+      />
+      <Tabs.Screen
+        name="settings"
+        options={{
+          title: "Settings",
+          tabBarIcon: icon("⚙️"),
+          href: isAdmin ? undefined : null,
+        }}
+      />
+
+      {/* Opened from the Employees list, never shown in the tab bar */}
+      <Tabs.Screen name="employee-new" options={{ href: null }} />
+      <Tabs.Screen name="employee-detail" options={{ href: null }} />
 
       <Tabs.Screen
         name="profile"
