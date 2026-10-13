@@ -3,7 +3,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useNotifications } from "@/context/NotificationContext";
 import { colors } from "@/theme";
 import { useRouter } from "expo-router";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, Text, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 // Bahrain is UTC+3 all year
@@ -34,17 +34,20 @@ export default function AppHeader() {
   const { unreadCount } = useNotifications();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
+  const wide = width >= 900;
   const isAdmin = user?.role === "admin";
 
   return (
     <View
       style={{
         backgroundColor: colors.navy,
-        paddingTop: insets.top + 14,
-        paddingBottom: 20,
+        paddingTop: insets.top + (wide ? 16 : 14),
+        paddingBottom: wide ? 16 : 20,
         paddingHorizontal: 16,
-        borderBottomLeftRadius: 24,
-        borderBottomRightRadius: 24,
+        // Rounded like the phone design; flat on desktop so it joins the sidebar
+        borderBottomLeftRadius: wide ? 0 : 24,
+        borderBottomRightRadius: wide ? 0 : 24,
       }}
     >
       <View
@@ -53,7 +56,7 @@ export default function AppHeader() {
           alignItems: "center",
           gap: 12,
           width: "100%",
-          maxWidth: 900,
+          maxWidth: 1040,
           alignSelf: "center",
         }}
       >
@@ -91,7 +94,7 @@ export default function AppHeader() {
           </Text>
         </View>
 
-        {/* Settings: admins only */}
+        {/* Settings: admins only (also in the desktop sidebar) */}
         {isAdmin ? (
           <Pressable onPress={() => router.push("/settings" as any)} style={circle}>
             <Text style={{ fontSize: 20 }}>⚙️</Text>

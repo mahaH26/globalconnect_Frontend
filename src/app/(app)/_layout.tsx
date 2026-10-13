@@ -1,4 +1,5 @@
 import AppHeader from "@/components/AppHeader";
+import Sidebar, { NavItem } from "@/components/Sidebar";
 import { Center } from "@/components/ui";
 import { useAuth } from "@/context/AuthContext";
 import { colors } from "@/theme";
@@ -8,6 +9,22 @@ import { ActivityIndicator, Text, useWindowDimensions } from "react-native";
 const icon = (emoji: string) => () => (
   <Text style={{ fontSize: 18 }}>{emoji}</Text>
 );
+
+const ADMIN_NAV: NavItem[] = [
+  { name: "index", label: "Dashboard", icon: "🏠" },
+  { name: "employees", label: "Employees", icon: "👥" },
+  { name: "team-attendance", label: "Attendance", icon: "🗓️" },
+  { name: "leave-review", label: "Leave requests", icon: "✅" },
+  { name: "profile", label: "Profile", icon: "👤" },
+];
+
+const EMPLOYEE_NAV: NavItem[] = [
+  { name: "index", label: "Home", icon: "🏠" },
+  { name: "attendance", label: "Attendance", icon: "🗓️" },
+  { name: "leave", label: "Leave", icon: "🌴" },
+  { name: "progress", label: "Progress", icon: "📈" },
+  { name: "profile", label: "Profile", icon: "👤" },
+];
 
 export default function AppLayout() {
   const { user, loading } = useAuth();
@@ -28,13 +45,24 @@ export default function AppLayout() {
 
   return (
     <Tabs
+      // Wide screens get the navy sidebar; phones keep the bottom tab bar
+      tabBar={
+        wide
+          ? (props) => (
+              <Sidebar
+                {...props}
+                items={isAdmin ? ADMIN_NAV : EMPLOYEE_NAV}
+                isAdmin={isAdmin}
+              />
+            )
+          : undefined
+      }
       screenOptions={{
         headerShown: true,
         header: () => <AppHeader />,
         tabBarPosition: wide ? "left" : "bottom",
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.muted,
-        tabBarLabelPosition: wide ? "below-icon" : undefined,
         tabBarLabelStyle: { fontSize: 11, fontWeight: "600" },
         tabBarStyle: {
           backgroundColor: "#fff",
@@ -76,7 +104,7 @@ export default function AppLayout() {
         options={{ title: "Profile", tabBarIcon: icon("👤") }}
       />
 
-      {/* Reached from the header bell, quick actions or lists; never in the tab bar */}
+      {/* Reached from the header, sidebar or lists; never in the tab bar */}
       <Tabs.Screen name="notifications" options={{ href: null }} />
       <Tabs.Screen name="settings" options={{ href: null }} />
       <Tabs.Screen name="employee-new" options={{ href: null }} />
