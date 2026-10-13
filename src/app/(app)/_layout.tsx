@@ -15,6 +15,7 @@ const ADMIN_NAV: NavItem[] = [
   { name: "employees", label: "Employees", icon: "👥" },
   { name: "team-attendance", label: "Attendance", icon: "🗓️" },
   { name: "leave-review", label: "Leave requests", icon: "✅" },
+  { name: "chat", label: "Chat", icon: "💬" },
   { name: "profile", label: "Profile", icon: "👤" },
 ];
 
@@ -23,6 +24,7 @@ const EMPLOYEE_NAV: NavItem[] = [
   { name: "attendance", label: "Attendance", icon: "🗓️" },
   { name: "leave", label: "Leave", icon: "🌴" },
   { name: "progress", label: "Progress", icon: "📈" },
+  { name: "chat", label: "Chat", icon: "💬" },
   { name: "profile", label: "Profile", icon: "👤" },
 ];
 
@@ -103,11 +105,16 @@ export default function AppLayout() {
         name="profile"
         options={{ title: "Profile", tabBarIcon: icon("👤") }}
       />
-
+<Tabs.Screen
+  name="chat"
+  options={{ title: "Chat", tabBarIcon: icon("💬") }}
+/>
       {/* Reached from the header, sidebar or lists; never in the tab bar */}
       <Tabs.Screen name="notifications" options={{ href: null }} />
       <Tabs.Screen name="settings" options={{ href: null }} />
       <Tabs.Screen name="employee-new" options={{ href: null }} />
+      <Tabs.Screen name="chat-new" options={{ href: null }} />
+<Tabs.Screen name="chat-room" options={{ href: null }} />
       <Tabs.Screen name="employee-detail" options={{ href: null }} />
     </Tabs>
   );

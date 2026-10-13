@@ -33,6 +33,16 @@ interface LeaveRequest {
   status: string;
 }
 
+interface Conflict {
+  id: string;
+  full_name: string;
+  start_date: string;
+  end_date: string;
+  status: string;
+}
+
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
 export default function LeaveScreen() {
   const [balance, setBalance] = useState<Balance[]>([]);
   const [requests, setRequests] = useState<LeaveRequest[]>([]);
@@ -47,6 +57,7 @@ export default function LeaveScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [conflicts, setConflicts] = useState<Conflict[]>([]);
 
   const load = useCallback(async () => {
     try {
@@ -68,6 +79,27 @@ export default function LeaveScreen() {
   useEffect(() => {
     load();
   }, [load]);
+
+  // Check teammates' leave whenever both dates are valid
+  useEffect(() => {
+    const s = startDate.trim();
+    const e = endDate.trim();
+    if (!DATE_RE.test(s) || !DATE_RE.test(e) || e < s) {
+      setConflicts([]);
+      return;
+    }
+    const t = setTimeout(async () => {
+      try {
+        const r = await api<{ conflicts: Conflict[] }>(
+          `/leave/conflicts?start_date=${s}&end_date=${e}`,
+        );
+        setConflicts(r.conflicts);
+      } catch {
+        setConflicts([]);
+      }
+    }, 400);
+    return () => clearTimeout(t);
+  }, [startDate, endDate]);
 
   const submit = async () => {
     setFormError(null);
@@ -91,6 +123,7 @@ export default function LeaveScreen() {
       setStartDate("");
       setEndDate("");
       setReason("");
+      setConflicts([]);
       await load();
     } catch (e: any) {
       setFormError(e?.message ?? "Could not submit request");
@@ -164,6 +197,20 @@ export default function LeaveScreen() {
         multiline
         maxLength={500}
       />
+
+      {conflicts.length > 0 && (
+        <View>
+          <Text style={{ color: colors.warning, fontWeight: "700" }}>
+            Heads up: teammates already off in this period
+          </Text>
+          {conflicts.map((c) => (
+            <Text key={c.id} style={{ color: colors.warning }}>
+              {c.full_name}: {c.start_date} to {c.end_date} ({c.status})
+            </Text>
+          ))}
+        </View>
+      )}
+
       {formError && <Text>{formError}</Text>}
       {success && <Text>{success}</Text>}
       <TouchableOpacity onPress={submit} disabled={submitting}>

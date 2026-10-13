@@ -27,15 +27,40 @@ interface PendingLeave {
   profiles: { full_name: string } | null;
 }
 
+interface Conflict {
+  id: string;
+  full_name: string;
+  leave_type: string;
+  start_date: string;
+  end_date: string;
+  status: string;
+}
+
 export default function LeaveReviewScreen() {
   const [rows, setRows] = useState<PendingLeave[]>([]);
+  const [conflicts, setConflicts] = useState<Record<string, Conflict[]>>({});
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
       setError(null);
-      setRows(await api<PendingLeave[]>("/leave?status=pending"));
+      const list = await api<PendingLeave[]>("/leave?status=pending");
+      setRows(list);
+
+      const entries = await Promise.all(
+        list.map(async (r) => {
+          try {
+            const res = await api<{ conflicts: Conflict[] }>(
+              `/leave/${r.id}/conflicts`,
+            );
+            return [String(r.id), res.conflicts] as const;
+          } catch {
+            return [String(r.id), [] as Conflict[]] as const;
+          }
+        }),
+      );
+      setConflicts(Object.fromEntries(entries));
     } catch (e: any) {
       setError(e?.message ?? "Failed to load requests");
     }
@@ -77,6 +102,7 @@ export default function LeaveReviewScreen() {
       ListEmptyComponent={<Empty text="No pending requests." />}
       renderItem={({ item }) => {
         const busy = busyId === String(item.id);
+        const overlap = conflicts[String(item.id)] ?? [];
         return (
           <Card style={{ marginBottom: 12, gap: 12 }}>
             <Row>
@@ -93,6 +119,28 @@ export default function LeaveReviewScreen() {
               {item.days === 1 ? "" : "s"})
             </Text>
             {item.reason ? <Muted>{item.reason}</Muted> : null}
+
+            {overlap.length > 0 ? (
+              <View
+                style={{
+                  backgroundColor: colors.warningSoft,
+                  borderRadius: 10,
+                  padding: 10,
+                  gap: 4,
+                }}
+              >
+                <Text style={{ color: colors.warning, fontWeight: "700" }}>
+                  {overlap.length} teammate{overlap.length === 1 ? "" : "s"} off
+                  in this period
+                </Text>
+                {overlap.map((c) => (
+                  <Text key={c.id} style={{ color: colors.warning }}>
+                    {c.full_name}: {c.start_date} to {c.end_date} ({c.status})
+                  </Text>
+                ))}
+              </View>
+            ) : null}
+
             <Row>
               <Button
                 style={{ flex: 1 }}
