@@ -1,3 +1,5 @@
+import { colors, radius } from "@/theme";
+import { Ionicons } from "@expo/vector-icons";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
@@ -11,8 +13,13 @@ import {
   TextInputProps,
   View,
   ViewStyle,
+  useWindowDimensions,
 } from "react-native";
-import { colors, radius, shadow } from "@/theme";
+
+type IconName = React.ComponentProps<typeof Ionicons>["name"];
+const isIcon = (n: string): n is IconName => n in Ionicons.glyphMap;
+
+const SOFT = "#5B6385";
 
 export type Tone = "good" | "warn" | "bad" | "info" | "neutral";
 
@@ -21,7 +28,15 @@ const toneColors: Record<Tone, { bg: string; fg: string }> = {
   warn: { bg: colors.warningSoft, fg: colors.warning },
   bad: { bg: colors.dangerSoft, fg: colors.danger },
   info: { bg: colors.navySoft, fg: colors.navy },
-  neutral: { bg: colors.field, fg: colors.muted },
+  neutral: { bg: colors.navySoft, fg: colors.muted },
+};
+
+const toneIcons: Record<Tone, IconName> = {
+  good: "checkmark-circle",
+  warn: "warning",
+  bad: "alert-circle",
+  info: "information-circle",
+  neutral: "information-circle",
 };
 
 /** Maps a status word (active, late, rejected...) to a badge colour */
@@ -48,10 +63,10 @@ export function toneFor(status: string): Tone {
 // ---- layout helpers for FlatList screens ----
 export const listStyle: ViewStyle = { flex: 1, backgroundColor: colors.bg };
 export const listContent: ViewStyle = {
-  padding: 16,
+  padding: 20,
   paddingBottom: 40,
   width: "100%",
-  maxWidth: 900,
+  maxWidth: 1040,
   alignSelf: "center",
 };
 
@@ -64,10 +79,16 @@ export function Screen({
   onRefresh?: () => void;
   refreshing?: boolean;
 }) {
+  const { width } = useWindowDimensions();
+  const pad = width >= 700 ? 24 : 16;
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: colors.bg }}
-      contentContainerStyle={styles.screenContent}
+      contentContainerStyle={{
+        padding: pad,
+        paddingBottom: 48,
+        alignItems: "center",
+      }}
       keyboardShouldPersistTaps="handled"
       refreshControl={
         onRefresh ? (
@@ -77,6 +98,37 @@ export function Screen({
     >
       <View style={styles.screenInner}>{children}</View>
     </ScrollView>
+  );
+}
+
+/** Big page title with an optional subtitle and a right-aligned action (e.g. an Add button) */
+export function PageHeader({
+  title,
+  subtitle,
+  action,
+}: {
+  title: string;
+  subtitle?: string;
+  action?: React.ReactNode;
+}) {
+  return (
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        gap: 12,
+        marginBottom: 2,
+      }}
+    >
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text style={styles.pageTitle}>{title}</Text>
+        {subtitle ? (
+          <Text style={[styles.muted, { marginTop: 2 }]}>{subtitle}</Text>
+        ) : null}
+      </View>
+      {action}
+    </View>
   );
 }
 
@@ -93,13 +145,34 @@ export function Card({
     return (
       <Pressable
         onPress={onPress}
-        style={({ pressed }) => [styles.card, style, pressed && { opacity: 0.85 }]}
+        style={(s: any) => [
+          styles.card,
+          style,
+          s.hovered && { borderColor: "#D3D7EA" },
+          s.pressed && { opacity: 0.9 },
+        ]}
       >
         {children}
       </Pressable>
     );
   }
   return <View style={[styles.card, style]}>{children}</View>;
+}
+
+/** Heading used at the top of a Card */
+export function CardTitle({
+  title,
+  subtitle,
+}: {
+  title: string;
+  subtitle?: string;
+}) {
+  return (
+    <View style={{ gap: 2 }}>
+      <Text style={styles.cardTitle}>{title}</Text>
+      {subtitle ? <Text style={styles.muted}>{subtitle}</Text> : null}
+    </View>
+  );
 }
 
 export function Title({ children }: { children: React.ReactNode }) {
@@ -138,6 +211,7 @@ export function Button({
   disabled,
   variant = "primary",
   small,
+  icon,
   style,
 }: {
   title: string;
@@ -146,42 +220,68 @@ export function Button({
   disabled?: boolean;
   variant?: "primary" | "secondary" | "danger" | "ghost";
   small?: boolean;
+  icon?: IconName;
   style?: ViewStyle;
 }) {
-  const bg =
-    variant === "primary"
-      ? colors.primary
-      : variant === "danger"
-        ? colors.danger
-        : variant === "secondary"
-          ? colors.navySoft
-          : "transparent";
-  const fg =
-    variant === "secondary"
-      ? colors.navy
-      : variant === "ghost"
-        ? colors.primary
-        : colors.primaryText;
+  const look = {
+    primary: {
+      bg: colors.primary,
+      hover: "#CC0043",
+      fg: colors.primaryText,
+      border: "transparent",
+    },
+    secondary: {
+      bg: "#FFFFFF",
+      hover: "#F4F5FA",
+      fg: colors.navy,
+      border: colors.border,
+    },
+    danger: {
+      bg: colors.dangerSoft,
+      hover: "#FADBD7",
+      fg: colors.danger,
+      border: "transparent",
+    },
+    ghost: {
+      bg: "transparent",
+      hover: colors.accentSoft,
+      fg: colors.primary,
+      border: "transparent",
+    },
+  }[variant];
+
   return (
     <Pressable
       onPress={onPress}
       disabled={disabled || loading}
-      style={({ pressed }) => [
+      style={(s: any) => [
         styles.button,
         small && styles.buttonSmall,
         {
-          backgroundColor: bg,
-          opacity: disabled || loading ? 0.55 : pressed ? 0.85 : 1,
+          backgroundColor: s.hovered || s.pressed ? look.hover : look.bg,
+          borderColor: look.border,
+          opacity: disabled || loading ? 0.55 : 1,
         },
         style,
       ]}
     >
       {loading ? (
-        <ActivityIndicator color={fg} />
+        <ActivityIndicator size="small" color={look.fg} />
       ) : (
-        <Text style={[styles.buttonText, small && { fontSize: 14 }, { color: fg }]}>
-          {title}
-        </Text>
+        <>
+          {icon ? (
+            <Ionicons name={icon} size={small ? 15 : 17} color={look.fg} />
+          ) : null}
+          <Text
+            style={[
+              styles.buttonText,
+              small && { fontSize: 13 },
+              { color: look.fg },
+            ]}
+          >
+            {title}
+          </Text>
+        </>
       )}
     </Pressable>
   );
@@ -226,8 +326,21 @@ export function Notice({
   if (!children) return null;
   const t = toneColors[tone];
   return (
-    <View style={{ backgroundColor: t.bg, borderRadius: radius.sm, padding: 12 }}>
-      <Text style={{ color: t.fg, fontSize: 14, fontWeight: "600" }}>{children}</Text>
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 10,
+        backgroundColor: t.bg,
+        borderRadius: radius.sm,
+        paddingVertical: 11,
+        paddingHorizontal: 14,
+      }}
+    >
+      <Ionicons name={toneIcons[tone]} size={18} color={t.fg} />
+      <Text style={{ flex: 1, color: t.fg, fontSize: 13, fontWeight: "600" }}>
+        {children}
+      </Text>
     </View>
   );
 }
@@ -253,14 +366,31 @@ export function Center({ children }: { children: React.ReactNode }) {
 
 export function Empty({ text }: { text: string }) {
   return (
-    <View style={{ alignItems: "center", paddingVertical: 40 }}>
-      <Text style={{ fontSize: 36, marginBottom: 8 }}>📭</Text>
+    <View style={{ alignItems: "center", paddingVertical: 48, gap: 12 }}>
+      <View
+        style={{
+          width: 56,
+          height: 56,
+          borderRadius: 28,
+          backgroundColor: colors.navySoft,
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <Ionicons name="file-tray-outline" size={26} color={colors.muted} />
+      </View>
       <Text style={styles.muted}>{text}</Text>
     </View>
   );
 }
 
-export function Badge({ text, tone = "neutral" }: { text: string; tone?: Tone }) {
+export function Badge({
+  text,
+  tone = "neutral",
+}: {
+  text: string;
+  tone?: Tone;
+}) {
   const t = toneColors[tone];
   return (
     <View
@@ -272,17 +402,25 @@ export function Badge({ text, tone = "neutral" }: { text: string; tone?: Tone })
         alignSelf: "flex-start",
       }}
     >
-      <Text style={{ color: t.fg, fontSize: 12, fontWeight: "700", textTransform: "capitalize" }}>
+      <Text
+        style={{
+          color: t.fg,
+          fontSize: 12,
+          fontWeight: "600",
+          textTransform: "capitalize",
+        }}
+      >
         {text}
       </Text>
     </View>
   );
 }
 
+/** Pale pink avatar with initials. Pass `bg` for a solid colour with white text. */
 export function Avatar({
   name,
   size = 44,
-  bg = colors.navy,
+  bg,
 }: {
   name?: string | null;
   size?: number;
@@ -300,19 +438,32 @@ export function Avatar({
         width: size,
         height: size,
         borderRadius: size / 2,
-        backgroundColor: bg,
+        backgroundColor: bg ?? colors.accentSoft,
         alignItems: "center",
         justifyContent: "center",
       }}
     >
-      <Text style={{ color: "#fff", fontWeight: "700", fontSize: size * 0.38 }}>{initials}</Text>
+      <Text
+        style={{
+          color: bg ? "#fff" : colors.primary,
+          fontWeight: "700",
+          fontSize: size * 0.36,
+        }}
+      >
+        {initials}
+      </Text>
     </View>
   );
 }
 
-// ---- form pieces: filled inputs that sit directly on the screen (no boxed form) ----
+// ---- form pieces ----
 
-const webReset = Platform.OS === "web" ? ({ outlineStyle: "none" } as any) : null;
+const webReset =
+  Platform.OS === "web" ? ({ outlineStyle: "none" } as any) : null;
+const focusRing =
+  Platform.OS === "web"
+    ? ({ boxShadow: "0 0 0 3px rgba(230,0,76,0.10)" } as any)
+    : null;
 
 export function Field({
   label,
@@ -322,7 +473,11 @@ export function Field({
   onFocus,
   onBlur,
   ...props
-}: TextInputProps & { label?: string; half?: boolean; containerStyle?: ViewStyle }) {
+}: TextInputProps & {
+  label?: string;
+  half?: boolean;
+  containerStyle?: ViewStyle;
+}) {
   const [focus, setFocus] = useState(false);
   return (
     <View
@@ -334,7 +489,7 @@ export function Field({
     >
       {label ? <Text style={styles.label}>{label}</Text> : null}
       <TextInput
-        placeholderTextColor={colors.muted}
+        placeholderTextColor="#9AA0C0"
         {...props}
         onFocus={(e) => {
           setFocus(true);
@@ -347,6 +502,7 @@ export function Field({
         style={[
           styles.input,
           focus && styles.inputFocus,
+          focus && focusRing,
           props.multiline && { minHeight: 84, textAlignVertical: "top" },
           webReset,
           style,
@@ -358,12 +514,24 @@ export function Field({
 
 /** Puts fields side by side on wide screens and stacks them on phones */
 export function FieldRow({ children }: { children: React.ReactNode }) {
-  return <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12 }}>{children}</View>;
+  return (
+    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 14 }}>
+      {children}
+    </View>
+  );
 }
 
-export function Row({ children, style }: { children: React.ReactNode; style?: ViewStyle }) {
+export function Row({
+  children,
+  style,
+}: {
+  children: React.ReactNode;
+  style?: ViewStyle;
+}) {
   return (
-    <View style={[{ flexDirection: "row", alignItems: "center", gap: 10 }, style]}>
+    <View
+      style={[{ flexDirection: "row", alignItems: "center", gap: 10 }, style]}
+    >
       {children}
     </View>
   );
@@ -394,9 +562,20 @@ export function Chips<T extends string>({
             <Pressable
               key={o.value || "none"}
               onPress={() => onChange(o.value)}
-              style={[styles.chip, on && styles.chipOn]}
+              style={(s: any) => [
+                styles.chip,
+                s.hovered && !on && { backgroundColor: "#F4F5FA" },
+                on && styles.chipOn,
+              ]}
             >
-              <Text style={[styles.chipText, on && { color: "#fff" }]}>{o.label}</Text>
+              <Text
+                style={[
+                  styles.chipText,
+                  on && { color: colors.primary, fontWeight: "600" },
+                ]}
+              >
+                {o.label}
+              </Text>
             </Pressable>
           );
         })}
@@ -407,17 +586,44 @@ export function Chips<T extends string>({
 
 export function BackButton({ onPress }: { onPress: () => void }) {
   return (
-    <Pressable onPress={onPress} style={styles.back}>
-      <Text style={{ color: colors.navy, fontWeight: "700", fontSize: 14 }}>‹ Back</Text>
+    <Pressable
+      onPress={onPress}
+      style={(s: any) => [
+        styles.back,
+        s.hovered && { backgroundColor: "#F4F5FA" },
+      ]}
+    >
+      <Ionicons name="chevron-back" size={15} color={colors.navy} />
+      <Text style={{ color: colors.navy, fontWeight: "600", fontSize: 13 }}>
+        Back
+      </Text>
     </Pressable>
   );
 }
 
-export function KV({ label, value }: { label: string; value: React.ReactNode }) {
+export function KV({
+  label,
+  value,
+}: {
+  label: string;
+  value: React.ReactNode;
+}) {
   return (
     <View style={styles.kv}>
-      <Text style={[styles.muted, { flexShrink: 1, textTransform: "capitalize" }]}>{label}</Text>
-      <Text style={{ color: colors.text, fontWeight: "600", flexShrink: 1, textAlign: "right" }}>
+      <Text
+        style={[styles.muted, { flexShrink: 1, textTransform: "capitalize" }]}
+      >
+        {label}
+      </Text>
+      <Text
+        style={{
+          color: colors.text,
+          fontWeight: "600",
+          fontSize: 14,
+          flexShrink: 1,
+          textAlign: "right",
+        }}
+      >
         {value}
       </Text>
     </View>
@@ -425,7 +631,7 @@ export function KV({ label, value }: { label: string; value: React.ReactNode }) 
 }
 
 export function Divider() {
-  return <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: colors.border }} />;
+  return <View style={{ height: 1, backgroundColor: colors.border }} />;
 }
 
 export function Collapsible({
@@ -442,19 +648,26 @@ export function Collapsible({
     <View style={styles.collapsible}>
       <Pressable onPress={() => setOpen(!open)} style={styles.collapsibleHead}>
         <Text style={styles.sectionTitle}>{title}</Text>
-        <Text style={{ color: colors.muted, fontSize: 18 }}>{open ? "▾" : "▸"}</Text>
+        <Ionicons
+          name={open ? "chevron-down" : "chevron-forward"}
+          size={16}
+          color={colors.muted}
+        />
       </Pressable>
-      {open ? <View style={{ gap: 14, paddingBottom: 18 }}>{children}</View> : null}
+      {open ? (
+        <View style={{ gap: 14, paddingBottom: 18 }}>{children}</View>
+      ) : null}
     </View>
   );
 }
 
-// ---- quick action tiles (like the "Quick Actions" grid in the mobile design) ----
+// ---- quick action tiles ----
 
 export function TileGrid({ children }: { children: React.ReactNode }) {
   return <View style={styles.tileGrid}>{children}</View>;
 }
 
+/** `icon` can be an Ionicons name ("calendar") or, as before, an emoji */
 export function ActionTile({
   icon,
   label,
@@ -468,18 +681,28 @@ export function ActionTile({
   badge?: number;
   accent?: boolean;
 }) {
+  const fg = accent ? colors.primary : colors.navy;
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [styles.tile, pressed && { opacity: 0.7 }]}>
+    <Pressable
+      onPress={onPress}
+      style={(s: any) => [styles.tile, s.pressed && { opacity: 0.7 }]}
+    >
       <View
         style={[
           styles.tileIcon,
           { backgroundColor: accent ? colors.accentSoft : colors.navySoft },
         ]}
       >
-        <Text style={{ fontSize: 22 }}>{icon}</Text>
+        {isIcon(icon) ? (
+          <Ionicons name={icon} size={24} color={fg} />
+        ) : (
+          <Text style={{ fontSize: 22 }}>{icon}</Text>
+        )}
         {badge ? (
           <View style={styles.tileBadge}>
-            <Text style={styles.tileBadgeText}>{badge > 99 ? "99+" : badge}</Text>
+            <Text style={styles.tileBadgeText}>
+              {badge > 99 ? "99+" : badge}
+            </Text>
           </View>
         ) : null}
       </View>
@@ -491,76 +714,96 @@ export function ActionTile({
 }
 
 const styles = StyleSheet.create({
-  screenContent: { padding: 16, paddingBottom: 40, alignItems: "center" },
-  screenInner: { width: "100%", maxWidth: 900, gap: 14 },
+  screenInner: { width: "100%", maxWidth: 1040, gap: 16 },
   card: {
     backgroundColor: colors.card,
     borderRadius: radius.md,
-    padding: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 18,
     gap: 8,
-    ...shadow,
   },
-  title: { fontSize: 22, fontWeight: "800", color: colors.text, flexShrink: 1 },
-  muted: { fontSize: 14, color: colors.muted },
+  pageTitle: { fontSize: 26, fontWeight: "700", color: colors.text },
+  cardTitle: { fontSize: 15, fontWeight: "600", color: colors.text },
+  title: { fontSize: 22, fontWeight: "700", color: colors.text, flexShrink: 1 },
+  muted: { fontSize: 13, color: colors.muted },
   sectionRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     marginTop: 4,
   },
-  sectionTitle: { fontSize: 16, fontWeight: "700", color: colors.text },
-  sectionAction: { fontSize: 14, fontWeight: "600", color: colors.primary },
+  sectionTitle: { fontSize: 16, fontWeight: "600", color: colors.text },
+  sectionAction: { fontSize: 13, fontWeight: "600", color: colors.primary },
   button: {
-    paddingVertical: 14,
+    flexDirection: "row",
+    gap: 8,
     paddingHorizontal: 18,
-    borderRadius: radius.sm + 2,
+    borderRadius: radius.sm,
+    borderWidth: 1,
     alignItems: "center",
     justifyContent: "center",
-    minHeight: 48,
+    minHeight: 44,
   },
   buttonSmall: {
-    paddingVertical: 9,
-    paddingHorizontal: 16,
-    minHeight: 38,
+    paddingHorizontal: 14,
+    minHeight: 36,
     alignSelf: "flex-start",
   },
-  buttonText: { fontSize: 16, fontWeight: "700" },
-  grid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
+  buttonText: { fontSize: 14, fontWeight: "600" },
+  grid: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
   stat: {
     flexGrow: 1,
     flexBasis: 150,
     backgroundColor: colors.card,
     borderRadius: radius.md,
-    padding: 14,
-    ...shadow,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 16,
   },
-  statValue: { fontSize: 26, fontWeight: "800" },
+  statValue: { fontSize: 26, fontWeight: "700" },
   statLabel: { fontSize: 13, color: colors.muted, marginTop: 2 },
-  label: { fontSize: 13, fontWeight: "600", color: colors.muted },
+  label: { fontSize: 12, fontWeight: "600", color: SOFT },
   input: {
-    backgroundColor: colors.field,
-    borderRadius: radius.sm + 2,
+    backgroundColor: "#FFFFFF",
+    borderRadius: radius.sm,
     paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 15,
+    paddingVertical: 11,
+    fontSize: 14,
     color: colors.text,
-    borderWidth: 1.5,
-    borderColor: "transparent",
+    borderWidth: 1,
+    borderColor: colors.border,
   },
-  inputFocus: { borderColor: colors.primary, backgroundColor: "#fff" },
+  inputFocus: { borderColor: colors.primary },
   chip: {
     paddingHorizontal: 14,
-    paddingVertical: 8,
+    paddingVertical: 7,
     borderRadius: 999,
-    backgroundColor: colors.field,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: colors.border,
   },
-  chipOn: { backgroundColor: colors.navy },
-  chipText: { fontSize: 14, fontWeight: "600", color: colors.text, textTransform: "capitalize" },
+  chipOn: {
+    backgroundColor: colors.accentSoft,
+    borderColor: colors.accentSoft,
+  },
+  chipText: {
+    fontSize: 13,
+    fontWeight: "500",
+    color: SOFT,
+    textTransform: "capitalize",
+  },
   back: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
     alignSelf: "flex-start",
-    backgroundColor: colors.navySoft,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingLeft: 8,
+    paddingRight: 14,
+    paddingVertical: 7,
     borderRadius: 999,
   },
   kv: {
@@ -571,7 +814,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   collapsible: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
   collapsibleHead: {
@@ -581,10 +824,16 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
   },
   tileGrid: { flexDirection: "row", flexWrap: "wrap" },
-  tile: { width: "25%", alignItems: "center", paddingVertical: 10, paddingHorizontal: 2, gap: 6 },
+  tile: {
+    width: "25%",
+    alignItems: "center",
+    paddingVertical: 10,
+    paddingHorizontal: 2,
+    gap: 6,
+  },
   tileIcon: {
-    width: 54,
-    height: 54,
+    width: 52,
+    height: 52,
     borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
@@ -602,5 +851,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 5,
   },
   tileBadgeText: { color: "#fff", fontSize: 11, fontWeight: "700" },
-  tileLabel: { fontSize: 12, color: colors.text, textAlign: "center", fontWeight: "600" },
+  tileLabel: {
+    fontSize: 12,
+    color: colors.text,
+    textAlign: "center",
+    fontWeight: "600",
+  },
 });

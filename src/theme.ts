@@ -6,40 +6,41 @@ import type { ViewStyle } from "react-native";
 export const colors = {
   bg: "#F5F6FA",
   card: "#FFFFFF",
-  border: "#E3E6F0",
+  border: "#E6E8F2",
   text: "#1B2150",
   muted: "#6B7194",
 
   primary: "#E6004C",
   primaryText: "#FFFFFF",
 
-  navy: "#232A5C", // header, hero cards
-  navySoft: "#E9EBF5",
-  accentSoft: "#FDE6EE",
-  field: "#EDEFF7", // filled input background
+  navy: "#232A5C", // hero cards, strong text
+  navySoft: "#EEF0F8",
+  accentSoft: "#FDE9F0", // pale pink: active pills, avatars
+  field: "#EDEFF7",
 
   danger: "#D92D20",
   dangerSoft: "#FDECEA",
   success: "#12A150",
-  successSoft: "#E3F6EC",
+  successSoft: "#E6F6EC",
   warning: "#D98200",
-  warningSoft: "#FFF2DB",
+  warningSoft: "#FDF1D8",
 };
 
-// Tighter, flatter corners — 10 for controls, 14 for cards, 20 for sheets.
-export const radius = { sm: 10, md: 14, lg: 20 };
+// 10 for controls, 16 for cards, 20 for sheets.
+export const radius = { sm: 10, md: 16, lg: 20 };
 
-// Single soft shadow. Use nothing at all on flat surfaces (nav, rows, chips).
+// Cards now use a hairline border instead of a heavy shadow.
+// This is only a whisper of depth for the few places that still import it.
 export const shadow: ViewStyle = {
-  boxShadow: "0 2px 10px rgba(35,42,92,0.08)",
+  boxShadow: "0 1px 2px rgba(35,42,92,0.04)",
 } as any;
 
-// One weight pairing instead of a mix: semibold for headings, regular for body.
+// One weight pairing: bold for page headings, semibold for titles, regular for body.
 export const type = {
-  heading: { fontSize: 22, fontWeight: "600", color: colors.text },
+  heading: { fontSize: 26, fontWeight: "700", color: colors.text },
   title: { fontSize: 15, fontWeight: "600", color: colors.text },
   body: { fontSize: 14, fontWeight: "400", color: colors.text },
-  label: { fontSize: 11, fontWeight: "600", color: colors.muted },
+  label: { fontSize: 12, fontWeight: "600", color: colors.muted },
 } as const;
 
 // Consistent rhythm: 4 / 8 / 12 / 16 / 20 / 24.
