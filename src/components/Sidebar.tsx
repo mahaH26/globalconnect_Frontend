@@ -1,17 +1,369 @@
 import { useAuth } from "@/context/AuthContext";
 import { colors } from "@/theme";
+import { Ionicons } from "@expo/vector-icons";
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { useRouter } from "expo-router";
+import type { ComponentProps } from "react";
 import { useRef, useState } from "react";
-import { Animated, Easing, Pressable, Text, View } from "react-native";
+import { Animated, Easing, Modal, Pressable, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-export type NavItem = { name: string; label: string; icon: string };
+export type NavItem = {
+  name: string;
+  label: string;
+  icon: string;
+  badge?: number;
+};
 
-const COLLAPSED = 72;
-const EXPANDED = 240;
+type IconName = ComponentProps<typeof Ionicons>["name"];
 
-/** Desktop navigation menu: icons only, expands with labels on hover */
+const FULL_WIDTH = 224;
+const RAIL_WIDTH = 72;
+const ACTIVE_BG = "#FDE9F0";
+const SOFT = "#5B6385";
+
+function useDisplayName() {
+  const { user } = useAuth();
+  // Adjust these field names to match your user object
+  const displayName: string =
+    (user as any)?.full_name ?? (user as any)?.name ?? "Account";
+  const initials = displayName
+    .split(" ")
+    .map((p: string) => p[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+  return { displayName, initials };
+}
+
+function NavRow({
+  icon,
+  label,
+  active,
+  badge,
+  compact,
+  onPress,
+}: {
+  icon: string;
+  label: string;
+  active: boolean;
+  badge?: number;
+  compact?: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityLabel={label}
+      {...({ title: label } as any)}
+      style={(s: any) => ({
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "flex-start",
+        gap: 12,
+        height: 42,
+        paddingHorizontal: 14,
+        borderRadius: 10,
+        backgroundColor: active
+          ? ACTIVE_BG
+          : s.hovered
+            ? "#F4F5FA"
+            : "transparent",
+      })}
+    >
+      <View>
+        <Ionicons
+          name={(active ? icon : `${icon}-outline`) as IconName}
+          size={20}
+          color={active ? colors.primary : SOFT}
+        />
+        {compact && badge ? (
+          <View
+            style={{
+              position: "absolute",
+              top: -2,
+              right: -4,
+              width: 8,
+              height: 8,
+              borderRadius: 4,
+              backgroundColor: colors.primary,
+            }}
+          />
+        ) : null}
+      </View>
+      {compact ? null : (
+        <Text
+          numberOfLines={1}
+          style={{
+            flex: 1,
+            fontSize: 14,
+            fontWeight: active ? "600" : "500",
+            color: active ? colors.primary : SOFT,
+          }}
+        >
+          {label}
+        </Text>
+      )}
+      {!compact && badge ? (
+        <View
+          style={{
+            minWidth: 22,
+            height: 20,
+            paddingHorizontal: 6,
+            borderRadius: 10,
+            backgroundColor: "#FDF1D8",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Text style={{ fontSize: 11, fontWeight: "700", color: "#B7791F" }}>
+            {badge}
+          </Text>
+        </View>
+      ) : null}
+    </Pressable>
+  );
+}
+
+/** Desktop (full) and iPad (compact icon rail) navigation */
 export default function Sidebar({
+  state,
+  navigation,
+  items,
+  isAdmin,
+  hoverExpand = false,
+}: BottomTabBarProps & {
+  items: NavItem[];
+  isAdmin: boolean;
+  /** Icons only; hover (or tap the logo on touch screens) opens it with labels */
+  hoverExpand?: boolean;
+}) {
+  const { logout } = useAuth();
+  const router = useRouter();
+  const { displayName, initials } = useDisplayName();
+  const active = state.routes[state.index]?.name;
+
+  const [expanded, setExpanded] = useState(false);
+  const widthAnim = useRef(new Animated.Value(RAIL_WIDTH)).current;
+  const setOpen = (open: boolean) => {
+    setExpanded(open);
+    Animated.timing(widthAnim, {
+      toValue: open ? FULL_WIDTH : RAIL_WIDTH,
+      duration: 180,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: false, // width can't use the native driver
+    }).start();
+  };
+  // compact = labels hidden
+  const compact = !(hoverExpand && expanded);
+
+  return (
+    // Fixed-width placeholder so page content never shifts when the menu opens
+    <View style={{ width: RAIL_WIDTH, zIndex: 50 }}>
+      <Animated.View
+        {...(hoverExpand
+          ? ({
+              onMouseEnter: () => setOpen(true),
+              onMouseLeave: () => setOpen(false),
+            } as any)
+          : {})}
+        style={{
+          position: "absolute",
+          top: 0,
+          bottom: 0,
+          left: 0,
+          width: widthAnim,
+          backgroundColor: "#FFFFFF",
+          borderRightWidth: 1,
+          borderRightColor: colors.border,
+          paddingTop: 24,
+          paddingBottom: 16,
+          paddingHorizontal: 12,
+          justifyContent: "space-between",
+          overflow: "hidden",
+          ...(hoverExpand && expanded
+            ? ({ boxShadow: "4px 0 24px rgba(20,24,56,0.08)" } as any)
+            : null),
+        }}
+      >
+        <View>
+          {/* Brand */}
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "flex-start",
+              gap: 12,
+              paddingHorizontal: 6,
+              marginBottom: 28,
+            }}
+          >
+            <Pressable
+              onPress={() => hoverExpand && setOpen(!expanded)}
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: 10,
+                backgroundColor: colors.primary,
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Text style={{ color: "#fff", fontWeight: "800", fontSize: 14 }}>
+                gc
+              </Text>
+            </Pressable>
+            {compact ? null : (
+              <View style={{ flex: 1 }}>
+                <Text
+                  numberOfLines={1}
+                  style={{
+                    color: colors.navy,
+                    fontWeight: "700",
+                    fontSize: 15,
+                  }}
+                >
+                  Global Connect
+                </Text>
+                <Text
+                  numberOfLines={1}
+                  style={{
+                    color: colors.muted,
+                    fontSize: 10,
+                    letterSpacing: 1,
+                    marginTop: 2,
+                  }}
+                >
+                  PEOPLE WORKSPACE
+                </Text>
+              </View>
+            )}
+          </View>
+
+          {compact ? null : (
+            <Text
+              style={{
+                color: colors.muted,
+                fontSize: 11,
+                fontWeight: "600",
+                letterSpacing: 1,
+                paddingHorizontal: 12,
+                marginBottom: 8,
+              }}
+            >
+              WORKSPACE
+            </Text>
+          )}
+
+          <View style={{ gap: 4 }}>
+            {items.map((it) => (
+              <NavRow
+                key={it.name}
+                icon={it.icon}
+                label={it.label}
+                badge={it.badge}
+                compact={compact}
+                active={active === it.name}
+                onPress={() => navigation.navigate(it.name as never)}
+              />
+            ))}
+          </View>
+        </View>
+
+        <View>
+          <View style={{ gap: 4, marginBottom: 12 }}>
+            {isAdmin ? (
+              <NavRow
+                icon="settings"
+                label="Settings"
+                compact={compact}
+                active={active === "settings"}
+                onPress={() => router.push("/settings" as any)}
+              />
+            ) : null}
+            <NavRow
+              icon="log-out"
+              label="Sign out"
+              compact={compact}
+              active={false}
+              onPress={() => {
+                logout();
+              }}
+            />
+          </View>
+
+          {/* User card */}
+          <Pressable
+            onPress={() => navigation.navigate("profile" as never)}
+            style={(s: any) => ({
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "flex-start",
+              gap: 10,
+              paddingTop: 14,
+              paddingHorizontal: 6,
+              paddingBottom: 4,
+              borderTopWidth: 1,
+              borderTopColor: colors.border,
+              opacity: s.hovered ? 0.8 : 1,
+            })}
+          >
+            <View
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: 18,
+                backgroundColor: ACTIVE_BG,
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Text
+                style={{
+                  color: colors.primary,
+                  fontWeight: "700",
+                  fontSize: 13,
+                }}
+              >
+                {initials}
+              </Text>
+            </View>
+            {compact ? null : (
+              <>
+                <View style={{ flex: 1 }}>
+                  <Text
+                    numberOfLines={1}
+                    style={{
+                      color: colors.navy,
+                      fontWeight: "600",
+                      fontSize: 13,
+                    }}
+                  >
+                    {displayName}
+                  </Text>
+                  <Text
+                    numberOfLines={1}
+                    style={{ color: colors.muted, fontSize: 12 }}
+                  >
+                    {isAdmin ? "Administrator" : "Employee"}
+                  </Text>
+                </View>
+                <Ionicons
+                  name="chevron-forward"
+                  size={16}
+                  color={colors.muted}
+                />
+              </>
+            )}
+          </Pressable>
+        </View>
+      </Animated.View>
+    </View>
+  );
+}
+
+/** Phone navigation: 4 main tabs + a "More" sheet for everything else */
+export function BottomNav({
   state,
   navigation,
   items,
@@ -19,151 +371,233 @@ export default function Sidebar({
 }: BottomTabBarProps & { items: NavItem[]; isAdmin: boolean }) {
   const { logout } = useAuth();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const { displayName, initials } = useDisplayName();
+  const [open, setOpen] = useState(false);
   const active = state.routes[state.index]?.name;
 
-  const [expanded, setExpanded] = useState(false);
-  const width = useRef(new Animated.Value(COLLAPSED)).current;
-  const labelOpacity = useRef(new Animated.Value(0)).current;
+  const primary = items.slice(0, 4);
+  const overflow: NavItem[] = [
+    ...items.slice(4),
+    // Admin nav keeps Profile in the sidebar user card, so surface it here
+    ...(isAdmin
+      ? [{ name: "profile", label: "Profile", icon: "person" } as NavItem]
+      : []),
+  ];
+  const moreActive =
+    open ||
+    (!!active &&
+      !primary.some((p) => p.name === active) &&
+      overflow.some((o) => o.name === active));
+  const moreBadge = overflow.some((o) => o.badge);
 
-  const animate = (open: boolean) => {
-    setExpanded(open);
-    Animated.parallel([
-      Animated.timing(width, {
-        toValue: open ? EXPANDED : COLLAPSED,
-        duration: 180,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: false, // width can't use the native driver
-      }),
-      Animated.timing(labelOpacity, {
-        toValue: open ? 1 : 0,
-        duration: open ? 200 : 100,
-        useNativeDriver: false,
-      }),
-    ]).start();
+  const go = (name: string) => {
+    setOpen(false);
+    navigation.navigate(name as never);
   };
 
-  const row = (
-    key: string,
-    icon: string,
-    label: string,
-    on: boolean,
-    onPress: () => void,
-  ) => (
-    <Pressable
-      key={key}
-      onPress={onPress}
-      style={(s: any) => ({
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 12,
-        paddingVertical: 12,
-        paddingHorizontal: 12,
-        borderRadius: 12,
-        overflow: "hidden",
-        backgroundColor: on
-          ? colors.primary
-          : s.hovered || s.pressed
-            ? "rgba(255,255,255,0.10)"
-            : "transparent",
-      })}
-    >
-      <Text style={{ fontSize: 18, width: 20, textAlign: "center" }}>
-        {icon}
-      </Text>
-      <Animated.Text
-        numberOfLines={1}
-        style={{
-          opacity: labelOpacity,
-          color: on ? "#fff" : "#C9CDE8",
-          fontWeight: "700",
-          fontSize: 15,
-          flexShrink: 0,
-        }}
-      >
-        {label}
-      </Animated.Text>
-    </Pressable>
-  );
-
   return (
-    // Fixed-width placeholder so the page content doesn't shift when the menu expands
-    <View style={{ width: COLLAPSED, zIndex: 50 }}>
-      <Animated.View
-        // hover handlers (react-native-web)
-        {...({
-          onMouseEnter: () => animate(true),
-          onMouseLeave: () => animate(false),
-        } as any)}
+    <>
+      <View
         style={{
-          position: "absolute",
-          top: 0,
-          bottom: 0,
-          left: 0,
-          width,
-          backgroundColor: colors.navy,
-          paddingVertical: 20,
-          paddingHorizontal: 14,
-          justifyContent: "space-between",
-          overflow: "hidden",
-          // soft shadow when floating over content
-          ...(expanded
-            ? ({ boxShadow: "4px 0 16px rgba(0,0,0,0.25)" } as any)
-            : null),
+          flexDirection: "row",
+          backgroundColor: "#FFFFFF",
+          borderTopWidth: 1,
+          borderTopColor: colors.border,
+          paddingTop: 8,
+          paddingBottom: Math.max(insets.bottom, 8),
+          paddingHorizontal: 6,
         }}
       >
-        <View style={{ gap: 6 }}>
+        {primary.map((it) => {
+          const on = active === it.name;
+          return (
+            <Pressable
+              key={it.name}
+              onPress={() => go(it.name)}
+              style={{
+                flex: 1,
+                alignItems: "center",
+                gap: 3,
+                paddingVertical: 4,
+              }}
+            >
+              <View
+                style={{
+                  paddingHorizontal: 16,
+                  paddingVertical: 4,
+                  borderRadius: 12,
+                  backgroundColor: on ? ACTIVE_BG : "transparent",
+                }}
+              >
+                <Ionicons
+                  name={(on ? it.icon : `${it.icon}-outline`) as IconName}
+                  size={22}
+                  color={on ? colors.primary : SOFT}
+                />
+              </View>
+              <Text
+                numberOfLines={1}
+                style={{
+                  fontSize: 11,
+                  fontWeight: on ? "700" : "500",
+                  color: on ? colors.primary : SOFT,
+                }}
+              >
+                {it.label}
+              </Text>
+            </Pressable>
+          );
+        })}
+
+        <Pressable
+          onPress={() => setOpen(true)}
+          style={{ flex: 1, alignItems: "center", gap: 3, paddingVertical: 4 }}
+        >
+          <View
+            style={{
+              paddingHorizontal: 16,
+              paddingVertical: 4,
+              borderRadius: 12,
+              backgroundColor: moreActive ? ACTIVE_BG : "transparent",
+            }}
+          >
+            <Ionicons
+              name="grid-outline"
+              size={22}
+              color={moreActive ? colors.primary : SOFT}
+            />
+            {moreBadge ? (
+              <View
+                style={{
+                  position: "absolute",
+                  top: 4,
+                  right: 12,
+                  width: 8,
+                  height: 8,
+                  borderRadius: 4,
+                  backgroundColor: colors.primary,
+                }}
+              />
+            ) : null}
+          </View>
+          <Text
+            style={{
+              fontSize: 11,
+              fontWeight: moreActive ? "700" : "500",
+              color: moreActive ? colors.primary : SOFT,
+            }}
+          >
+            More
+          </Text>
+        </Pressable>
+      </View>
+
+      <Modal
+        visible={open}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setOpen(false)}
+      >
+        <Pressable
+          onPress={() => setOpen(false)}
+          style={{ flex: 1, backgroundColor: "rgba(20,24,56,0.35)" }}
+        />
+        <View
+          style={{
+            backgroundColor: "#FFFFFF",
+            borderTopLeftRadius: 20,
+            borderTopRightRadius: 20,
+            paddingTop: 10,
+            paddingHorizontal: 12,
+            paddingBottom: Math.max(insets.bottom, 12) + 4,
+          }}
+        >
+          <View
+            style={{
+              alignSelf: "center",
+              width: 40,
+              height: 4,
+              borderRadius: 2,
+              backgroundColor: colors.border,
+              marginBottom: 14,
+            }}
+          />
+
+          {/* Who is signed in */}
           <View
             style={{
               flexDirection: "row",
               alignItems: "center",
               gap: 10,
-              marginBottom: 22,
-              overflow: "hidden",
+              paddingHorizontal: 8,
+              paddingBottom: 14,
+              marginBottom: 8,
+              borderBottomWidth: 1,
+              borderBottomColor: colors.border,
             }}
           >
             <View
               style={{
-                width: 44,
+                width: 40,
                 height: 40,
-                borderRadius: 12,
-                backgroundColor: colors.primary,
+                borderRadius: 20,
+                backgroundColor: ACTIVE_BG,
                 alignItems: "center",
                 justifyContent: "center",
               }}
             >
-              <Text style={{ color: "#fff", fontWeight: "800" }}>GC</Text>
+              <Text style={{ color: colors.primary, fontWeight: "700" }}>
+                {initials}
+              </Text>
             </View>
-            <Animated.View style={{ opacity: labelOpacity }}>
+            <View style={{ flex: 1 }}>
               <Text
                 numberOfLines={1}
-                style={{ color: "#fff", fontWeight: "800", fontSize: 15 }}
+                style={{ color: colors.navy, fontWeight: "600", fontSize: 14 }}
               >
-                Global Connect
+                {displayName}
               </Text>
-              <Text numberOfLines={1} style={{ color: "#9AA0C9", fontSize: 12 }}>
-                Staff portal
+              <Text style={{ color: colors.muted, fontSize: 12 }}>
+                {isAdmin ? "Administrator" : "Employee"}
               </Text>
-            </Animated.View>
+            </View>
           </View>
 
-          {items.map((it) =>
-            row(it.name, it.icon, it.label, active === it.name, () =>
-              navigation.navigate(it.name as never),
-            ),
-          )}
+          <View style={{ gap: 4 }}>
+            {overflow.map((it) => (
+              <NavRow
+                key={it.name}
+                icon={it.icon}
+                label={it.label}
+                badge={it.badge}
+                active={active === it.name}
+                onPress={() => go(it.name)}
+              />
+            ))}
+            {isAdmin ? (
+              <NavRow
+                icon="settings"
+                label="Settings"
+                active={active === "settings"}
+                onPress={() => {
+                  setOpen(false);
+                  router.push("/settings" as any);
+                }}
+              />
+            ) : null}
+            <NavRow
+              icon="log-out"
+              label="Sign out"
+              active={false}
+              onPress={() => {
+                setOpen(false);
+                logout();
+              }}
+            />
+          </View>
         </View>
-
-        <View style={{ gap: 6 }}>
-          {isAdmin
-            ? row("settings", "⚙️", "Settings", active === "settings", () =>
-                router.push("/settings" as any),
-              )
-            : null}
-          {row("logout", "🚪", "Sign out", false, () => {
-            logout();
-          })}
-        </View>
-      </Animated.View>
-    </View>
+      </Modal>
+    </>
   );
 }
