@@ -14,13 +14,19 @@ export interface Notification {
   message: string;
   isRead: boolean;
   createdAt: string;
+  /** Employee the notification is about (needs the API to return it) */
+  userName: string | null;
 }
 
 interface NotificationContextType {
   notifications: Notification[];
   unreadCount: number;
+  /** Last error from a delete / clear action, shown on the notifications screen */
+  error: string | null;
   fetchNotifications: () => Promise<void>;
   markAllAsRead: () => Promise<void>;
+  deleteNotification: (id: string) => Promise<void>;
+  clearAll: () => Promise<void>;
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(
@@ -32,6 +38,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
 }) => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
 
   const fetchNotifications = useCallback(async () => {
@@ -45,14 +52,21 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
         rows.map((r) => ({
           id: String(r.id),
           title: r.title,
-          message: r.message,
+          // the table column is called `body`
+          message: r.message ?? r.body ?? "",
           isRead: r.is_read,
           createdAt: r.created_at,
+          userName:
+            r.user_name ??
+            r.full_name ??
+            r.employee_name ??
+            r.profiles?.full_name ??
+            null,
         })),
       );
       setUnreadCount(unread.count);
-    } catch (error) {
-      console.error("Failed to fetch notifications:", error);
+    } catch (e) {
+      console.error("Failed to fetch notifications:", e);
     }
   }, [user]);
 
@@ -60,8 +74,50 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
     try {
       await api("/notifications/read-all", { method: "PATCH" });
       await fetchNotifications();
-    } catch (error) {
-      console.error("Error updating notifications:", error);
+    } catch (e) {
+      console.error("Error updating notifications:", e);
+    }
+  }, [fetchNotifications]);
+
+  // Deletes one notification from the database, then refreshes
+  const deleteNotification = useCallback(
+    async (id: string) => {
+      setError(null);
+      try {
+        await api(`/notifications/${id}`, { method: "DELETE" });
+        setNotifications((list) => list.filter((n) => n.id !== id));
+        await fetchNotifications();
+      } catch (e: any) {
+        setError(e?.message ?? "Could not delete the notification");
+        await fetchNotifications();
+      }
+    },
+    [fetchNotifications],
+  );
+
+  // Deletes all notifications from the database
+  const clearAll = useCallback(async () => {
+    setError(null);
+    try {
+      try {
+        await api("/notifications", { method: "DELETE" });
+      } catch (e: any) {
+        // The server has no "delete everything" route (404): delete them one by one instead
+        if (e?.status !== 404) throw e;
+        const rows = await api<any[]>("/notifications");
+        const results = await Promise.allSettled(
+          rows.map((r) => api(`/notifications/${r.id}`, { method: "DELETE" })),
+        );
+        const failed = results.find((r) => r.status === "rejected") as
+          | PromiseRejectedResult
+          | undefined;
+        if (failed) throw failed.reason;
+      }
+      setNotifications([]);
+      setUnreadCount(0);
+    } catch (e: any) {
+      setError(e?.message ?? "Could not clear notifications");
+      await fetchNotifications();
     }
   }, [fetchNotifications]);
 
@@ -78,7 +134,15 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
 
   return (
     <NotificationContext.Provider
-      value={{ notifications, unreadCount, fetchNotifications, markAllAsRead }}
+      value={{
+        notifications,
+        unreadCount,
+        error,
+        fetchNotifications,
+        markAllAsRead,
+        deleteNotification,
+        clearAll,
+      }}
     >
       {children}
     </NotificationContext.Provider>
