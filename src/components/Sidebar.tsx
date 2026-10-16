@@ -61,8 +61,8 @@ function NavRow({
         alignItems: "center",
         justifyContent: "flex-start",
         gap: 12,
-        height: 42,
-        paddingHorizontal: 14,
+        height: 40,
+        paddingHorizontal: 15,
         borderRadius: 10,
         backgroundColor: active
           ? ACTIVE_BG
@@ -74,7 +74,7 @@ function NavRow({
       <View>
         <Ionicons
           name={(active ? icon : `${icon}-outline`) as IconName}
-          size={20}
+          size={18}
           color={active ? colors.primary : SOFT}
         />
         {compact && badge ? (

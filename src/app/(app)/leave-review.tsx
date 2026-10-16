@@ -1,21 +1,23 @@
-import { api } from "@/lib/api";
 import {
   Avatar,
   Badge,
-  Card,
   Button,
+  Card,
+  Divider,
   Empty,
   ErrorText,
   Muted,
+  PageHeader,
   Row,
-  Title,
   listContent,
   listStyle,
 } from "@/components/ui";
+import { api } from "@/lib/api";
 import { colors } from "@/theme";
+import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
-import { FlatList, Text, View } from "react-native";
+import { FlatList, Text, View, useWindowDimensions } from "react-native";
 
 interface PendingLeave {
   id: string;
@@ -37,6 +39,11 @@ interface Conflict {
 }
 
 export default function LeaveReviewScreen() {
+  const { width } = useWindowDimensions();
+  // Two cards per row on desktop, one on iPad / phone
+  const cols = width >= 1000 ? 2 : 1;
+  const phone = width < 700;
+
   const [rows, setRows] = useState<PendingLeave[]>([]);
   const [conflicts, setConflicts] = useState<Record<string, Conflict[]>>({});
   const [error, setError] = useState<string | null>(null);
@@ -86,16 +93,21 @@ export default function LeaveReviewScreen() {
 
   return (
     <FlatList
+      key={cols} // numColumns can't change on a mounted list
       style={listStyle}
       contentContainerStyle={listContent}
       data={rows}
+      numColumns={cols}
+      columnWrapperStyle={cols > 1 ? { marginHorizontal: -8 } : undefined}
       keyExtractor={(r) => String(r.id)}
       onRefresh={load}
       refreshing={false}
       ListHeaderComponent={
-        <View style={{ gap: 12, marginBottom: 14 }}>
-          <Title>Leave requests</Title>
-          <Muted>{rows.length} pending</Muted>
+        <View style={{ gap: 12, marginBottom: 12 }}>
+          <PageHeader
+            title="Leave requests"
+            subtitle={`${rows.length} pending ${rows.length === 1 ? "request" : "requests"}`}
+          />
           <ErrorText>{error}</ErrorText>
         </View>
       }
@@ -104,59 +116,136 @@ export default function LeaveReviewScreen() {
         const busy = busyId === String(item.id);
         const overlap = conflicts[String(item.id)] ?? [];
         return (
-          <Card style={{ marginBottom: 12, gap: 12 }}>
-            <Row>
-              <Avatar name={item.profiles?.full_name} />
-              <View style={{ flex: 1, gap: 4 }}>
-                <Text style={{ fontSize: 16, fontWeight: "700", color: colors.text }}>
-                  {item.profiles?.full_name ?? "Employee"}
-                </Text>
-                <Badge text={item.leave_type} tone="info" />
-              </View>
-            </Row>
-            <Text style={{ color: colors.text, fontWeight: "600" }}>
-              {item.start_date} to {item.end_date} ({item.days} day
-              {item.days === 1 ? "" : "s"})
-            </Text>
-            {item.reason ? <Muted>{item.reason}</Muted> : null}
-
-            {overlap.length > 0 ? (
-              <View
-                style={{
-                  backgroundColor: colors.warningSoft,
-                  borderRadius: 10,
-                  padding: 10,
-                  gap: 4,
-                }}
-              >
-                <Text style={{ color: colors.warning, fontWeight: "700" }}>
-                  {overlap.length} teammate{overlap.length === 1 ? "" : "s"} off
-                  in this period
-                </Text>
-                {overlap.map((c) => (
-                  <Text key={c.id} style={{ color: colors.warning }}>
-                    {c.full_name}: {c.start_date} to {c.end_date} ({c.status})
+          <View
+            style={{
+              flex: 1,
+              maxWidth: `${100 / cols}%`,
+              paddingHorizontal: cols > 1 ? 8 : 0,
+              paddingVertical: 6,
+            }}
+          >
+            <Card style={{ gap: 14 }}>
+              <Row style={{ gap: 12 }}>
+                <Avatar name={item.profiles?.full_name} size={40} />
+                <View style={{ flex: 1, gap: 4 }}>
+                  <Text
+                    numberOfLines={1}
+                    style={{
+                      fontSize: 15,
+                      fontWeight: "600",
+                      color: colors.text,
+                    }}
+                  >
+                    {item.profiles?.full_name ?? "Employee"}
                   </Text>
-                ))}
-              </View>
-            ) : null}
+                  <Badge text={item.leave_type} tone="info" />
+                </View>
+                <View style={{ alignItems: "flex-end" }}>
+                  <Text
+                    style={{
+                      fontSize: 20,
+                      fontWeight: "700",
+                      color: colors.text,
+                    }}
+                  >
+                    {item.days}
+                  </Text>
+                  <Muted>{item.days === 1 ? "day" : "days"}</Muted>
+                </View>
+              </Row>
 
-            <Row>
-              <Button
-                style={{ flex: 1 }}
-                title="Approve"
-                disabled={busy}
-                onPress={() => review(item.id, "approved")}
-              />
-              <Button
-                style={{ flex: 1 }}
-                variant="secondary"
-                title="Reject"
-                disabled={busy}
-                onPress={() => review(item.id, "rejected")}
-              />
-            </Row>
-          </Card>
+              <Row style={{ gap: 8 }}>
+                <Ionicons
+                  name="calendar-outline"
+                  size={16}
+                  color={colors.muted}
+                />
+                <Text
+                  style={{
+                    color: colors.text,
+                    fontWeight: "500",
+                    fontSize: 13,
+                  }}
+                >
+                  {item.start_date} to {item.end_date}
+                </Text>
+              </Row>
+
+              {item.reason ? (
+                <Row style={{ alignItems: "flex-start", gap: 8 }}>
+                  <Ionicons
+                    name="chatbubble-outline"
+                    size={16}
+                    color={colors.muted}
+                  />
+                  <Text style={{ flex: 1, color: colors.muted, fontSize: 13 }}>
+                    {item.reason}
+                  </Text>
+                </Row>
+              ) : null}
+
+              {overlap.length > 0 ? (
+                <View
+                  style={{
+                    backgroundColor: colors.warningSoft,
+                    borderRadius: 10,
+                    padding: 12,
+                    gap: 4,
+                  }}
+                >
+                  <Row style={{ gap: 8 }}>
+                    <Ionicons
+                      name="people-outline"
+                      size={16}
+                      color={colors.warning}
+                    />
+                    <Text
+                      style={{
+                        flex: 1,
+                        color: colors.warning,
+                        fontWeight: "600",
+                        fontSize: 13,
+                      }}
+                    >
+                      {overlap.length} teammate{overlap.length === 1 ? "" : "s"}{" "}
+                      off in this period
+                    </Text>
+                  </Row>
+                  {overlap.map((c) => (
+                    <Text
+                      key={c.id}
+                      style={{ color: colors.warning, fontSize: 12 }}
+                    >
+                      {c.full_name}: {c.start_date} to {c.end_date} ({c.status})
+                    </Text>
+                  ))}
+                </View>
+              ) : null}
+
+              <Divider />
+
+              {/* Compact buttons: side by side on phones, natural width on larger screens */}
+              <Row style={{ gap: 8 }}>
+                <Button
+                  small
+                  icon="checkmark"
+                  title="Approve"
+                  disabled={busy}
+                  style={phone ? { flex: 1, alignSelf: "stretch" } : undefined}
+                  onPress={() => review(item.id, "approved")}
+                />
+                <Button
+                  small
+                  variant="secondary"
+                  icon="close"
+                  title="Reject"
+                  disabled={busy}
+                  style={phone ? { flex: 1, alignSelf: "stretch" } : undefined}
+                  onPress={() => review(item.id, "rejected")}
+                />
+              </Row>
+            </Card>
+          </View>
         );
       }}
     />
