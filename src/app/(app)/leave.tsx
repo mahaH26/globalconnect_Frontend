@@ -1,4 +1,4 @@
-import DateField from "@/components/DateField";
+import CalendarPicker from "@/components/CalendarPicker";
 import {
   Badge,
   Button,
@@ -82,6 +82,33 @@ function IconDot({ name, size = 30 }: { name: IconName; size?: number }) {
       }}
     >
       <Ionicons name={name} size={size * 0.52} color={colors.primary} />
+    </View>
+  );
+}
+
+/** Label + calendar button, sized like a Field so it sits in a FieldRow */
+function DateInput({
+  label,
+  value,
+  onChange,
+  minDate,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  minDate?: string;
+}) {
+  return (
+    <View style={{ gap: 6, flexGrow: 1, flexBasis: 240, minWidth: 0 }}>
+      <Text style={{ fontSize: 12, fontWeight: "600", color: "#5B6385" }}>
+        {label}
+      </Text>
+      <CalendarPicker
+        value={value}
+        onChange={onChange}
+        minDate={minDate}
+        emptyLabel="Pick a date"
+      />
     </View>
   );
 }
@@ -282,14 +309,12 @@ export default function LeaveScreen() {
         onChange={setLeaveType}
       />
       <FieldRow>
-        <DateField
-          half
+        <DateInput
           label="Start date"
           value={startDate}
           onChange={setStartDate}
         />
-        <DateField
-          half
+        <DateInput
           label="End date"
           value={endDate}
           onChange={setEndDate}
