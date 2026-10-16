@@ -1,4 +1,3 @@
-import { api } from "@/lib/api";
 import {
   Avatar,
   Button,
@@ -11,7 +10,9 @@ import {
   listContent,
   listStyle,
 } from "@/components/ui";
+import { api } from "@/lib/api";
 import { colors } from "@/theme";
+import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { FlatList, Pressable, Text, TextInput, View } from "react-native";
@@ -21,6 +22,8 @@ interface Person {
   full_name: string;
   role: string;
 }
+
+const SOFT = "#5B6385";
 
 export default function ChatNew() {
   const router = useRouter();
@@ -37,12 +40,15 @@ export default function ChatNew() {
   }, []);
 
   const toggle = (id: string) =>
-    setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
+    setSelected((s) =>
+      s.includes(id) ? s.filter((x) => x !== id) : [...s, id],
+    );
 
   const create = async () => {
     setError(null);
     if (selected.length === 0) return setError("Pick at least one person.");
-    if (selected.length > 1 && !name.trim()) return setError("Enter a group name.");
+    if (selected.length > 1 && !name.trim())
+      return setError("Enter a group name.");
     setBusy(true);
     try {
       const conv = await api<{ id: string }>("/chat/conversations", {
@@ -52,7 +58,10 @@ export default function ChatNew() {
           name: selected.length > 1 ? name.trim() : undefined,
         },
       });
-      router.replace({ pathname: "/chat-room", params: { id: conv.id } } as any);
+      router.replace({
+        pathname: "/chat-room",
+        params: { id: conv.id },
+      } as any);
     } catch (e: any) {
       setError(e?.message ?? "Could not create chat");
     } finally {
@@ -63,14 +72,36 @@ export default function ChatNew() {
   return (
     <FlatList
       style={listStyle}
-      contentContainerStyle={listContent}
+      contentContainerStyle={[
+        listContent,
+        { width: "100%", maxWidth: 720, alignSelf: "center" },
+      ]}
       data={people}
       keyExtractor={(p) => p.id}
       ListHeaderComponent={
-        <View style={{ gap: 12, marginBottom: 14 }}>
-          <Button title="Back" variant="secondary" onPress={() => router.back()} />
-          <Title>New chat</Title>
-          <Muted>Pick one person for a direct chat, or several for a group.</Muted>
+        <View style={{ gap: 14, marginBottom: 14 }}>
+          <Pressable
+            onPress={() => router.back()}
+            style={{
+              alignSelf: "flex-start",
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 4,
+            }}
+          >
+            <Ionicons name="chevron-back" size={18} color={SOFT} />
+            <Text style={{ color: SOFT, fontWeight: "600", fontSize: 13 }}>
+              Back
+            </Text>
+          </Pressable>
+
+          <View style={{ gap: 4 }}>
+            <Title>New chat</Title>
+            <Muted>
+              Pick one person for a direct chat, or several for a group.
+            </Muted>
+          </View>
+
           {selected.length > 1 ? (
             <TextInput
               placeholder="Group name"
@@ -79,18 +110,24 @@ export default function ChatNew() {
               onChangeText={setName}
               maxLength={80}
               style={{
-                backgroundColor: colors.field,
+                backgroundColor: "#FFFFFF",
+                borderWidth: 1,
+                borderColor: colors.border,
                 borderRadius: 10,
-                padding: 12,
+                paddingVertical: 12,
+                paddingHorizontal: 14,
                 color: colors.text,
               }}
             />
           ) : null}
-          <ErrorText>{error}</ErrorText>
+
+          {error ? <ErrorText>{error}</ErrorText> : null}
+
           <Button
+            style={{ alignSelf: "flex-start", minWidth: 180 }}
             title={
               selected.length > 1
-                ? `Create group (${selected.length} people)`
+                ? `Create group (${selected.length})`
                 : "Start chat"
             }
             onPress={create}
@@ -106,8 +143,8 @@ export default function ChatNew() {
             <Card
               style={{
                 marginBottom: 10,
-                borderWidth: 2,
-                borderColor: on ? colors.primary : "transparent",
+                borderWidth: 1,
+                borderColor: on ? colors.primary : colors.border,
               }}
             >
               <Row>
@@ -118,7 +155,11 @@ export default function ChatNew() {
                   </Text>
                   <Muted>{item.role}</Muted>
                 </View>
-                <Text style={{ fontSize: 18 }}>{on ? "✅" : "⬜"}</Text>
+                <Ionicons
+                  name={on ? "checkmark-circle" : "ellipse-outline"}
+                  size={22}
+                  color={on ? colors.primary : colors.muted}
+                />
               </Row>
             </Card>
           </Pressable>

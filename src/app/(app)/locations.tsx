@@ -1,8 +1,15 @@
+import CalendarPicker from "@/components/CalendarPicker"; // adjust path if yours differs
 import { Button, Card, ErrorText, Muted, Screen, Title } from "@/components/ui";
 import { api } from "@/lib/api";
 import { colors } from "@/theme";
 import { createElement, useCallback, useEffect, useState } from "react";
-import { Linking, Platform, Text, TextInput, View } from "react-native";
+import {
+  Linking,
+  Platform,
+  Text,
+  useWindowDimensions,
+  View,
+} from "react-native";
 
 interface Point {
   id: string;
@@ -34,17 +41,30 @@ interface MapData {
   total_records: number;
 }
 
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-const pad = (n: number) => String(n).padStart(2, "0");
-const t = new Date();
-const todayStr = `${t.getFullYear()}-${pad(t.getMonth() + 1)}-${pad(t.getDate())}`;
+// Bahrain is UTC+3 all year (same rule as CalendarPicker)
+const todayStr = new Date(Date.now() + 3 * 3600 * 1000)
+  .toISOString()
+  .slice(0, 10);
 
-const inputStyle = {
-  backgroundColor: colors.field,
-  borderRadius: 10,
-  padding: 12,
-  color: colors.text,
-} as const;
+const SOFT = "#5B6385";
+const BREAKPOINT = 640;
+
+const Label = ({ children }: { children: string }) => (
+  <Text
+    style={{ fontWeight: "600", color: SOFT, fontSize: 13, marginBottom: 6 }}
+  >
+    {children}
+  </Text>
+);
+
+const Dot = ({ color, label }: { color: string; label: string }) => (
+  <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+    <View
+      style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: color }}
+    />
+    <Text style={{ color: SOFT, fontSize: 12 }}>{label}</Text>
+  </View>
+);
 
 function buildHtml(data: MapData) {
   const json = JSON.stringify(data).replace(/</g, "\\u003c");
@@ -79,19 +99,20 @@ if(b.length) map.fitBounds(b,{padding:[40,40],maxZoom:17});
 }
 
 export default function LocationsScreen() {
+  const { width } = useWindowDimensions();
+  const wide = width >= BREAKPOINT;
+
   const [from, setFrom] = useState(todayStr);
   const [to, setTo] = useState(todayStr);
   const [data, setData] = useState<MapData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    const f = from.trim();
-    const e = to.trim();
-    if (!DATE_RE.test(f) || !DATE_RE.test(e))
-      return setError("Use the format YYYY-MM-DD for both dates.");
-    if (e < f)
-      return setError("The end date must not be before the start date.");
+  const fetchMap = useCallback(async (f: string, e: string) => {
+    if (!f || !e || e < f)
+      return setError(
+        "Choose a start and end date. The end date can't be before the start date.",
+      );
     setLoading(true);
     setError(null);
     try {
@@ -102,116 +123,170 @@ export default function LocationsScreen() {
     } finally {
       setLoading(false);
     }
-  }, [from, to]);
+  }, []);
+
+  const load = useCallback(() => fetchMap(from, to), [fetchMap, from, to]);
 
   useEffect(() => {
     load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const changeFrom = (v: string) => {
+    setFrom(v);
+    // keep the range valid: if start moves past end, move end with it
+    if (v && to && v > to) setTo(v);
+    setError(null);
+  };
+
+  const changeTo = (v: string) => {
+    setTo(v);
+    if (v && from && v < from) setFrom(v);
+    setError(null);
+  };
 
   return (
     <Screen onRefresh={load} refreshing={false}>
-      <Title>Employee locations</Title>
+      <View
+        style={{ width: "100%", maxWidth: 960, alignSelf: "center", gap: 16 }}
+      >
+        <Title>Employee locations</Title>
 
-      <Card>
-        <Text style={{ fontWeight: "700", color: colors.muted, fontSize: 13 }}>
-          Start date
-        </Text>
-        <TextInput
-          value={from}
-          onChangeText={setFrom}
-          placeholder="YYYY-MM-DD"
-          placeholderTextColor={colors.muted}
-          autoCapitalize="none"
-          style={inputStyle}
-        />
-        <Text style={{ fontWeight: "700", color: colors.muted, fontSize: 13 }}>
-          End date
-        </Text>
-        <TextInput
-          value={to}
-          onChangeText={setTo}
-          placeholder="YYYY-MM-DD"
-          placeholderTextColor={colors.muted}
-          autoCapitalize="none"
-          style={inputStyle}
-        />
-        <ErrorText>{error}</ErrorText>
-        <Button title="Show on map" onPress={load} loading={loading} />
-      </Card>
-
-      {data ? (
-        <>
-          <Muted>
-            {data.points.length} of {data.total_records} check-in(s) shown on
-            the map. Green = on time, orange = late, red = outside the allowed
-            radius.
-          </Muted>
-          {data.total_records > 0 && data.points.length === 0 ? (
-            <ErrorText>
-              These records have no coordinates. Records added directly in the
-              database (test data) have none. Real check-ins from the app are
-              saved with their location.
-            </ErrorText>
-          ) : null}
-
-          {Platform.OS === "web" ? (
-            <View style={{ height: 480, borderRadius: 12, overflow: "hidden" }}>
-              {createElement("iframe", {
-                srcDoc: buildHtml(data),
-                style: { width: "100%", height: "100%", border: 0 },
-                title: "Employee locations map",
-              })}
+        <Card>
+          <View style={{ gap: 20 }}>
+            <View style={{ flexDirection: wide ? "row" : "column", gap: 16 }}>
+              <View style={{ flex: wide ? 1 : undefined }}>
+                <Label>Start date</Label>
+                <CalendarPicker value={from} onChange={changeFrom} />
+              </View>
+              <View style={{ flex: wide ? 1 : undefined }}>
+                <Label>End date</Label>
+                <CalendarPicker value={to} onChange={changeTo} />
+              </View>
             </View>
-          ) : (
-            <Muted>The map is available in the web version.</Muted>
-          )}
 
-          <Card>
-            <Text style={{ fontWeight: "800", color: colors.text }}>
-              Check-ins
-            </Text>
-            {data.points.length === 0 ? (
-              <Muted>No located check-ins for this period.</Muted>
+            {error ? <ErrorText>{error}</ErrorText> : null}
+
+            <View
+              style={{
+                borderTopWidth: 1,
+                borderTopColor: colors.border,
+                paddingTop: 16,
+                alignItems: wide ? "flex-start" : "stretch",
+              }}
+            >
+              <Button
+                style={wide ? { minWidth: 180 } : undefined}
+                title="Show on map"
+                onPress={load}
+                loading={loading}
+              />
+            </View>
+          </View>
+        </Card>
+
+        {data ? (
+          <>
+            <View style={{ gap: 8 }}>
+              <Muted>
+                {data.points.length} of {data.total_records} check-in
+                {data.total_records === 1 ? "" : "s"} shown on the map.
+              </Muted>
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 16 }}>
+                <Dot color="#12A150" label="On time" />
+                <Dot color="#D98200" label="Late" />
+                <Dot color="#D92D20" label="Outside allowed radius" />
+              </View>
+            </View>
+
+            {data.total_records > 0 && data.points.length === 0 ? (
+              <ErrorText>
+                These records have no coordinates. Records added directly in the
+                database (test data) have none. Real check-ins from the app are
+                saved with their location.
+              </ErrorText>
             ) : null}
-            {data.points.map((p) => (
+
+            {Platform.OS === "web" ? (
               <View
-                key={p.id}
                 style={{
-                  paddingVertical: 8,
-                  borderTopWidth: 1,
-                  borderTopColor: colors.border,
-                  gap: 2,
+                  height: wide ? 480 : 360,
+                  borderRadius: 16,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  overflow: "hidden",
                 }}
               >
-                <Text style={{ fontWeight: "700", color: colors.text }}>
-                  {p.name}{" "}
-                  <Text style={{ fontWeight: "400", color: colors.muted }}>
-                    · {p.department}
-                  </Text>
-                </Text>
-                <Muted>
-                  {p.work_date} · {p.status} · In {p.check_in ?? "--:--"} · Out{" "}
-                  {p.check_out ?? "--:--"} ·{" "}
-                  {p.distance_m === null
-                    ? "no office set"
-                    : `${p.distance_m} m from office`}
-                  {p.within_radius === false ? " · OUTSIDE RADIUS" : ""}
-                </Muted>
-                <Text
-                  style={{ color: colors.primary, fontWeight: "700" }}
-                  onPress={() =>
-                    Linking.openURL(
-                      `https://www.google.com/maps?q=${p.lat},${p.lng}`,
-                    )
-                  }
-                >
-                  Open in Google Maps
-                </Text>
+                {createElement("iframe", {
+                  srcDoc: buildHtml(data),
+                  style: { width: "100%", height: "100%", border: 0 },
+                  title: "Employee locations map",
+                })}
               </View>
-            ))}
-          </Card>
-        </>
-      ) : null}
+            ) : (
+              <Muted>The map is available in the web version.</Muted>
+            )}
+
+            <Card>
+              <View style={{ gap: 4 }}>
+                <Text
+                  style={{
+                    fontWeight: "700",
+                    color: colors.text,
+                    fontSize: 16,
+                  }}
+                >
+                  Check-ins
+                </Text>
+                {data.points.length === 0 ? (
+                  <Muted>No located check-ins for this period.</Muted>
+                ) : null}
+                {data.points.map((p, i) => (
+                  <View
+                    key={p.id}
+                    style={{
+                      paddingVertical: 12,
+                      borderTopWidth: i === 0 ? 0 : 1,
+                      borderTopColor: colors.border,
+                      gap: 2,
+                    }}
+                  >
+                    <Text style={{ fontWeight: "700", color: colors.text }}>
+                      {p.name}{" "}
+                      <Text style={{ fontWeight: "400", color: colors.muted }}>
+                        · {p.department}
+                      </Text>
+                    </Text>
+                    <Muted>
+                      {p.work_date} · {p.status} · In {p.check_in ?? "--:--"} ·
+                      Out {p.check_out ?? "--:--"} ·{" "}
+                      {p.distance_m === null
+                        ? "no office set"
+                        : `${p.distance_m} m from office`}
+                      {p.within_radius === false ? " · Outside radius" : ""}
+                    </Muted>
+                    <Text
+                      style={{
+                        color: colors.primary,
+                        fontWeight: "600",
+                        fontSize: 13,
+                        marginTop: 2,
+                      }}
+                      onPress={() =>
+                        Linking.openURL(
+                          `https://www.google.com/maps?q=${p.lat},${p.lng}`,
+                        )
+                      }
+                    >
+                      Open in Google Maps
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            </Card>
+          </>
+        ) : null}
+      </View>
     </Screen>
   );
 }

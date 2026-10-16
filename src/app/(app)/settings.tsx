@@ -80,6 +80,9 @@ const EMPTY_OFFICE: OfficeForm = {
 };
 const toNum = (s: string) => (s.trim() === "" ? NaN : Number(s));
 
+// Compact buttons that never stretch to full width
+const BTN = { alignSelf: "flex-start" } as const;
+
 function officeBody(v: OfficeForm) {
   const latitude = toNum(v.lat);
   const longitude = toNum(v.lng);
@@ -109,12 +112,25 @@ function levelBody(v: LevelForm) {
 
 function Block({ children }: { children: React.ReactNode }) {
   return (
-    <View style={{ gap: 10 }}>
+    <View style={{ gap: 12 }}>
       {children}
       <Divider />
     </View>
   );
 }
+
+const SubTitle = ({ children }: { children: string }) => (
+  <Text
+    style={{
+      color: colors.text,
+      fontWeight: "700",
+      fontSize: 14,
+      marginTop: 4,
+    }}
+  >
+    {children}
+  </Text>
+);
 
 function PolicyRow({
   p,
@@ -209,7 +225,7 @@ function OfficeFields({
   };
 
   return (
-    <View style={{ gap: 10 }}>
+    <View style={{ gap: 12 }}>
       <Field
         label="Name"
         value={v.name}
@@ -221,14 +237,13 @@ function OfficeFields({
         onChangeText={(t) => setV({ ...v, address: t })}
         placeholder="Office 41, Building 435G, Road 1805, Manama"
       />
-      <Row style={{ flexWrap: "wrap" }}>
-        <Button
-          small
-          variant="secondary"
-          title={busy ? "Searching..." : "Find coordinates from address"}
-          onPress={find}
-        />
-      </Row>
+      <Button
+        small
+        variant="secondary"
+        style={BTN}
+        title={busy ? "Searching..." : "Find coordinates from address"}
+        onPress={find}
+      />
       {note ? <Muted>{note}</Muted> : null}
       <FieldRow>
         <Field
@@ -344,7 +359,12 @@ function LevelRow({
   return (
     <Block>
       <LevelFields v={v} setV={setV} />
-      <Button small title="Save level" onPress={() => onSave(l.id, v)} />
+      <Button
+        small
+        style={BTN}
+        title="Save level"
+        onPress={() => onSave(l.id, v)}
+      />
     </Block>
   );
 }
@@ -554,137 +574,134 @@ export default function SettingsScreen() {
 
   return (
     <Screen>
-      <BackButton onPress={() => router.back()} />
-      <Title>Settings</Title>
-      <ErrorText>{error}</ErrorText>
-      <Notice tone="good">{msg}</Notice>
-      {!cfg && !error ? <Muted>Loading...</Muted> : null}
+      <View
+        style={{ width: "100%", maxWidth: 800, alignSelf: "center", gap: 14 }}
+      >
+        <BackButton onPress={() => router.back()} />
+        <Title>Settings</Title>
+        {error ? <ErrorText>{error}</ErrorText> : null}
+        {msg ? <Notice tone="good">{msg}</Notice> : null}
+        {!cfg && !error ? <Muted>Loading...</Muted> : null}
 
-      {cfg && (
-        <View>
-          <Collapsible title="Work hours and points" defaultOpen>
-            <FieldRow>
-              <Field
-                half
-                label="Work start (HH:MM)"
-                value={workStart}
-                onChangeText={setWorkStart}
-                autoCapitalize="none"
-              />
-              <Field
-                half
-                label="Work end (HH:MM)"
-                value={workEnd}
-                onChangeText={setWorkEnd}
-                autoCapitalize="none"
-              />
-              <Field
-                half
-                label="Grace minutes"
-                value={graceText}
-                onChangeText={setGraceText}
-                keyboardType="numeric"
-              />
-              <Field
-                half
-                label="Weekend days (0-6, comma separated)"
-                value={weekendText}
-                onChangeText={setWeekendText}
-              />
-              <Field
-                half
-                label="Points for on-time check-in"
-                value={onTimeText}
-                onChangeText={setOnTimeText}
-                keyboardType="numeric"
-              />
-              <Field
-                half
-                label="Points for late check-in"
-                value={lateText}
-                onChangeText={setLateText}
-                keyboardType="numeric"
-              />
-            </FieldRow>
-            <Button title="Save work settings" onPress={saveWork} />
-          </Collapsible>
-
-          <Collapsible title="Leave allowances">
-            {cfg.leave_policies.map((p) => (
-              <PolicyRow key={p.leave_type} p={p} onSave={savePolicy} />
-            ))}
-          </Collapsible>
-
-          <Collapsible title="Departments">
-            {cfg.departments.map((d) => (
-              <DepartmentRow
-                key={d.id}
-                d={d}
-                onRename={renameDepartment}
-                onDelete={deleteDepartment}
-              />
-            ))}
-            <Text
-              style={{ color: colors.muted, fontWeight: "600", fontSize: 13 }}
-            >
-              New department
-            </Text>
-            <Row style={{ flexWrap: "wrap" }}>
-              <Field
-                containerStyle={{ flexGrow: 1, flexBasis: 200 }}
-                placeholder="Department name"
-                value={newDept}
-                onChangeText={setNewDept}
-              />
-              <Button small title="Add" onPress={addDepartment} />
-            </Row>
-          </Collapsible>
-
-          <Collapsible title="Office locations">
-            {cfg.offices.map((o) => (
-              <OfficeRow
-                key={o.id}
-                o={o}
-                onSave={saveOffice}
-                onDelete={deleteOffice}
-              />
-            ))}
-            <Text
-              style={{ color: colors.muted, fontWeight: "600", fontSize: 13 }}
-            >
-              New office
-            </Text>
-            <OfficeFields v={newOffice} setV={setNewOffice} />
-            <Row style={{ flexWrap: "wrap" }}>
+        {cfg && (
+          <View style={{ gap: 12 }}>
+            <Collapsible title="Work hours and points" defaultOpen>
+              <FieldRow>
+                <Field
+                  half
+                  label="Work start (HH:MM)"
+                  value={workStart}
+                  onChangeText={setWorkStart}
+                  autoCapitalize="none"
+                />
+                <Field
+                  half
+                  label="Work end (HH:MM)"
+                  value={workEnd}
+                  onChangeText={setWorkEnd}
+                  autoCapitalize="none"
+                />
+                <Field
+                  half
+                  label="Grace minutes"
+                  value={graceText}
+                  onChangeText={setGraceText}
+                  keyboardType="numeric"
+                />
+                <Field
+                  half
+                  label="Weekend days (0-6, comma separated)"
+                  value={weekendText}
+                  onChangeText={setWeekendText}
+                />
+                <Field
+                  half
+                  label="Points for on-time check-in"
+                  value={onTimeText}
+                  onChangeText={setOnTimeText}
+                  keyboardType="numeric"
+                />
+                <Field
+                  half
+                  label="Points for late check-in"
+                  value={lateText}
+                  onChangeText={setLateText}
+                  keyboardType="numeric"
+                />
+              </FieldRow>
               <Button
                 small
-                variant="secondary"
-                title="Use my current location"
-                onPress={useMyLocation}
+                style={BTN}
+                title="Save work settings"
+                onPress={saveWork}
               />
-              <Button small title="Add office" onPress={addOffice} />
-            </Row>
-            <Muted>
-              The address is the label people see. The check-in distance uses
-              the latitude and longitude. For best accuracy, copy the
-              coordinates from Google Maps (right-click the building).
-            </Muted>
-          </Collapsible>
+            </Collapsible>
 
-          <Collapsible title="Progression levels">
-            {cfg.levels.map((l) => (
-              <LevelRow key={l.id} l={l} onSave={saveLevel} />
-            ))}
-            <Text
-              style={{ color: colors.muted, fontWeight: "600", fontSize: 13 }}
-            >
-              New level
-            </Text>
-            <LevelFields v={newLevel} setV={setNewLevel} />
-            <Button small title="Add level" onPress={addLevel} />
-          </Collapsible>
-        </View>
-      )}
+            <Collapsible title="Leave allowances">
+              {cfg.leave_policies.map((p) => (
+                <PolicyRow key={p.leave_type} p={p} onSave={savePolicy} />
+              ))}
+            </Collapsible>
+
+            <Collapsible title="Departments">
+              {cfg.departments.map((d) => (
+                <DepartmentRow
+                  key={d.id}
+                  d={d}
+                  onRename={renameDepartment}
+                  onDelete={deleteDepartment}
+                />
+              ))}
+              <SubTitle>New department</SubTitle>
+              <Row style={{ flexWrap: "wrap" }}>
+                <Field
+                  containerStyle={{ flexGrow: 1, flexBasis: 200 }}
+                  placeholder="Department name"
+                  value={newDept}
+                  onChangeText={setNewDept}
+                />
+                <Button small title="Add" onPress={addDepartment} />
+              </Row>
+            </Collapsible>
+
+            <Collapsible title="Office locations">
+              {cfg.offices.map((o) => (
+                <OfficeRow
+                  key={o.id}
+                  o={o}
+                  onSave={saveOffice}
+                  onDelete={deleteOffice}
+                />
+              ))}
+              <SubTitle>New office</SubTitle>
+              <OfficeFields v={newOffice} setV={setNewOffice} />
+              <Row style={{ flexWrap: "wrap" }}>
+                <Button
+                  small
+                  variant="secondary"
+                  title="Use my current location"
+                  onPress={useMyLocation}
+                />
+                <Button small title="Add office" onPress={addOffice} />
+              </Row>
+              <Muted>
+                The address is the label people see. The check-in distance uses
+                the latitude and longitude. For best accuracy, copy the
+                coordinates from Google Maps (right-click the building).
+              </Muted>
+            </Collapsible>
+
+            <Collapsible title="Progression levels">
+              {cfg.levels.map((l) => (
+                <LevelRow key={l.id} l={l} onSave={saveLevel} />
+              ))}
+              <SubTitle>New level</SubTitle>
+              <LevelFields v={newLevel} setV={setNewLevel} />
+              <Button small style={BTN} title="Add level" onPress={addLevel} />
+            </Collapsible>
+          </View>
+        )}
+      </View>
     </Screen>
   );
 }

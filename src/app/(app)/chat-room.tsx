@@ -1,10 +1,11 @@
-import { api } from "@/lib/api";
-import { useAuth } from "@/context/AuthContext";
 import { Button, ErrorText, Muted, Title } from "@/components/ui";
+import { useAuth } from "@/context/AuthContext";
+import { api } from "@/lib/api";
 import { colors } from "@/theme";
+import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useRef, useState } from "react";
-import { FlatList, Text, TextInput, View } from "react-native";
+import { FlatList, Pressable, Text, TextInput, View } from "react-native";
 
 interface Msg {
   id: string;
@@ -18,6 +19,9 @@ interface Room {
   members: { user_id: string; full_name: string }[];
   messages: Msg[];
 }
+
+const SOFT = "#5B6385";
+const MAX_WIDTH = 720;
 
 const hhmm = (iso: string) =>
   new Date(iso).toLocaleTimeString("en-GB", {
@@ -79,21 +83,65 @@ export default function ChatRoom() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
-      <View style={{ padding: 16, gap: 8 }}>
-        <Button title="Back" variant="secondary" onPress={() => router.back()} />
-        <Title>{title}</Title>
-        {isGroup ? (
-          <Muted>{room?.members.map((m) => m.full_name).join(", ")}</Muted>
-        ) : null}
+      {/* Header */}
+      <View
+        style={{
+          borderBottomWidth: 1,
+          borderBottomColor: colors.border,
+          backgroundColor: "#FFFFFF",
+        }}
+      >
+        <View
+          style={{
+            width: "100%",
+            maxWidth: MAX_WIDTH,
+            alignSelf: "center",
+            paddingHorizontal: 16,
+            paddingVertical: 12,
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 12,
+          }}
+        >
+          <Pressable
+            onPress={() => router.back()}
+            accessibilityLabel="Back"
+            style={(s: any) => ({
+              width: 36,
+              height: 36,
+              borderRadius: 18,
+              alignItems: "center",
+              justifyContent: "center",
+              backgroundColor: s.hovered ? "#F4F5FA" : "transparent",
+            })}
+          >
+            <Ionicons name="chevron-back" size={20} color={SOFT} />
+          </Pressable>
+          <View style={{ flex: 1 }}>
+            <Title>{title}</Title>
+            {isGroup ? (
+              <Muted>{room?.members.map((m) => m.full_name).join(", ")}</Muted>
+            ) : null}
+          </View>
+        </View>
       </View>
 
+      {/* Messages */}
       <FlatList
         ref={listRef}
         style={{ flex: 1 }}
-        contentContainerStyle={{ padding: 16, gap: 8 }}
+        contentContainerStyle={{
+          padding: 16,
+          gap: 8,
+          width: "100%",
+          maxWidth: MAX_WIDTH,
+          alignSelf: "center",
+        }}
         data={room?.messages ?? []}
         keyExtractor={(m) => m.id}
-        onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: false })}
+        onContentSizeChange={() =>
+          listRef.current?.scrollToEnd({ animated: false })
+        }
         ListEmptyComponent={<Muted>No messages yet. Say hello!</Muted>}
         renderItem={({ item }) => {
           const mine = item.sender_id === user?.id;
@@ -102,19 +150,31 @@ export default function ChatRoom() {
               style={{
                 alignSelf: mine ? "flex-end" : "flex-start",
                 maxWidth: "80%",
-                backgroundColor: mine ? colors.primary : colors.navySoft,
+                backgroundColor: mine ? colors.primary : "#FFFFFF",
+                borderWidth: mine ? 0 : 1,
+                borderColor: colors.border,
                 borderRadius: 14,
+                borderBottomRightRadius: mine ? 4 : 14,
+                borderBottomLeftRadius: mine ? 14 : 4,
                 paddingVertical: 8,
                 paddingHorizontal: 12,
                 gap: 2,
               }}
             >
               {isGroup && !mine ? (
-                <Text style={{ fontSize: 12, fontWeight: "700", color: colors.navy }}>
+                <Text
+                  style={{
+                    fontSize: 12,
+                    fontWeight: "700",
+                    color: colors.primary,
+                  }}
+                >
                   {item.sender_name}
                 </Text>
               ) : null}
-              <Text style={{ color: mine ? "#fff" : colors.text }}>{item.body}</Text>
+              <Text style={{ color: mine ? "#fff" : colors.text }}>
+                {item.body}
+              </Text>
               <Text
                 style={{
                   fontSize: 11,
@@ -129,25 +189,43 @@ export default function ChatRoom() {
         }}
       />
 
-      <View style={{ padding: 12, gap: 8, borderTopWidth: 1, borderTopColor: colors.border }}>
-        <ErrorText>{error}</ErrorText>
-        <View style={{ flexDirection: "row", gap: 8, alignItems: "center" }}>
-          <TextInput
-            style={{
-              flex: 1,
-              backgroundColor: colors.field,
-              borderRadius: 10,
-              padding: 12,
-              color: colors.text,
-            }}
-            placeholder="Type a message"
-            placeholderTextColor={colors.muted}
-            value={text}
-            onChangeText={setText}
-            onSubmitEditing={send}
-            maxLength={2000}
-          />
-          <Button title="Send" onPress={send} loading={sending} />
+      {/* Composer */}
+      <View
+        style={{
+          borderTopWidth: 1,
+          borderTopColor: colors.border,
+          backgroundColor: "#FFFFFF",
+        }}
+      >
+        <View
+          style={{
+            width: "100%",
+            maxWidth: MAX_WIDTH,
+            alignSelf: "center",
+            padding: 12,
+            gap: 8,
+          }}
+        >
+          {error ? <ErrorText>{error}</ErrorText> : null}
+          <View style={{ flexDirection: "row", gap: 8, alignItems: "center" }}>
+            <TextInput
+              style={{
+                flex: 1,
+                backgroundColor: colors.field,
+                borderRadius: 999,
+                paddingVertical: 11,
+                paddingHorizontal: 16,
+                color: colors.text,
+              }}
+              placeholder="Type a message"
+              placeholderTextColor={colors.muted}
+              value={text}
+              onChangeText={setText}
+              onSubmitEditing={send}
+              maxLength={2000}
+            />
+            <Button title="Send" onPress={send} loading={sending} />
+          </View>
         </View>
       </View>
     </View>
