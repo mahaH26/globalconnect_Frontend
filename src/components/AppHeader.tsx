@@ -3,8 +3,17 @@ import { useNotifications } from "@/context/NotificationContext";
 import { colors } from "@/theme";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { Pressable, Text, View, useWindowDimensions } from "react-native";
+import {
+  Image,
+  Pressable,
+  Text,
+  View,
+  useWindowDimensions,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+// Company logo (transparent PNG): <project root>/assets/logo/logo.png
+const LOGO = require("../../assets/logo/logo.png");
 
 const SOFT = "#5B6385";
 const PINK = "#FDE9F0";
@@ -78,6 +87,13 @@ export default function AppHeader({
       <View
         style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 8 }}
       >
+        {wide ? null : (
+          <Image
+            source={LOGO}
+            resizeMode="contain"
+            style={{ width: 28, height: 28, marginRight: 4 }}
+          />
+        )}
         {wide ? (
           <>
             <Text style={{ color: colors.muted, fontSize: 13 }}>Workspace</Text>

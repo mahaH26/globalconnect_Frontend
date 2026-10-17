@@ -1,11 +1,18 @@
 import { useAuth } from "@/context/AuthContext";
 import { colors } from "@/theme";
 import { Ionicons } from "@expo/vector-icons";
-import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { useRouter } from "expo-router";
 import type { ComponentProps } from "react";
 import { useRef, useState } from "react";
-import { Animated, Easing, Modal, Pressable, Text, View } from "react-native";
+import {
+  Animated,
+  Easing,
+  Image,
+  Modal,
+  Pressable,
+  Text,
+  View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export type NavItem = {
@@ -17,6 +24,13 @@ export type NavItem = {
 
 type IconName = ComponentProps<typeof Ionicons>["name"];
 
+type BottomTabBarProps = {
+  state: { index: number; routes: { name: string }[] };
+  navigation: { navigate: (name: never) => void };
+};
+
+const LOGO = require("../../assets/logo/logo.png");
+
 const FULL_WIDTH = 224;
 const RAIL_WIDTH = 72;
 const ACTIVE_BG = "#FDE9F0";
@@ -24,7 +38,6 @@ const SOFT = "#5B6385";
 
 function useDisplayName() {
   const { user } = useAuth();
-  // Adjust these field names to match your user object
   const displayName: string =
     (user as any)?.full_name ?? (user as any)?.name ?? "Account";
   const initials = displayName
@@ -125,7 +138,6 @@ function NavRow({
   );
 }
 
-/** Desktop (full) and iPad (compact icon rail) navigation */
 export default function Sidebar({
   state,
   navigation,
@@ -135,7 +147,6 @@ export default function Sidebar({
 }: BottomTabBarProps & {
   items: NavItem[];
   isAdmin: boolean;
-  /** Icons only; hover (or tap the logo on touch screens) opens it with labels */
   hoverExpand?: boolean;
 }) {
   const { logout } = useAuth();
@@ -151,14 +162,12 @@ export default function Sidebar({
       toValue: open ? FULL_WIDTH : RAIL_WIDTH,
       duration: 180,
       easing: Easing.out(Easing.cubic),
-      useNativeDriver: false, // width can't use the native driver
+      useNativeDriver: false,
     }).start();
   };
-  // compact = labels hidden
   const compact = !(hoverExpand && expanded);
 
   return (
-    // Fixed-width placeholder so page content never shifts when the menu opens
     <View style={{ width: RAIL_WIDTH, zIndex: 50 }}>
       <Animated.View
         {...(hoverExpand
@@ -187,58 +196,34 @@ export default function Sidebar({
         }}
       >
         <View>
-          {/* Brand */}
-          <View
+          <Pressable
+            onPress={() => hoverExpand && setOpen(!expanded)}
             style={{
-              flexDirection: "row",
+              height: 64,
+              justifyContent: "center",
               alignItems: "center",
-              justifyContent: "flex-start",
-              gap: 12,
-              paddingHorizontal: 6,
-              marginBottom: 28,
+              marginBottom: 24,
             }}
           >
-            <Pressable
-              onPress={() => hoverExpand && setOpen(!expanded)}
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: 10,
-                backgroundColor: colors.primary,
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <Text style={{ color: "#fff", fontWeight: "800", fontSize: 14 }}>
-                gc
+            {compact ? (
+              <Text
+                style={{
+                  color: colors.primary,
+                  fontWeight: "800",
+                  fontSize: 22,
+                  letterSpacing: 1,
+                }}
+              >
+                GC
               </Text>
-            </Pressable>
-            {compact ? null : (
-              <View style={{ flex: 1 }}>
-                <Text
-                  numberOfLines={1}
-                  style={{
-                    color: colors.navy,
-                    fontWeight: "700",
-                    fontSize: 15,
-                  }}
-                >
-                  Global Connect
-                </Text>
-                <Text
-                  numberOfLines={1}
-                  style={{
-                    color: colors.muted,
-                    fontSize: 10,
-                    letterSpacing: 1,
-                    marginTop: 2,
-                  }}
-                >
-                  PEOPLE WORKSPACE
-                </Text>
-              </View>
+            ) : (
+              <Image
+                source={LOGO}
+                resizeMode="contain"
+                style={{ width: 200, height: 64 }}
+              />
             )}
-          </View>
+          </Pressable>
 
           {compact ? null : (
             <Text
@@ -292,7 +277,6 @@ export default function Sidebar({
             />
           </View>
 
-          {/* User card */}
           <Pressable
             onPress={() => navigation.navigate("profile" as never)}
             style={(s: any) => ({
@@ -362,7 +346,6 @@ export default function Sidebar({
   );
 }
 
-/** Phone navigation: 4 main tabs + a "More" sheet for everything else */
 export function BottomNav({
   state,
   navigation,
@@ -379,7 +362,6 @@ export function BottomNav({
   const primary = items.slice(0, 4);
   const overflow: NavItem[] = [
     ...items.slice(4),
-    // Admin nav keeps Profile in the sidebar user card, so surface it here
     ...(isAdmin
       ? [{ name: "profile", label: "Profile", icon: "person" } as NavItem]
       : []),
@@ -524,7 +506,6 @@ export function BottomNav({
             }}
           />
 
-          {/* Who is signed in */}
           <View
             style={{
               flexDirection: "row",
