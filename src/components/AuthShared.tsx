@@ -2,8 +2,9 @@ import { Button, ErrorText, Field } from "@/components/ui";
 import { useAuth } from "@/context/AuthContext";
 import { colors } from "@/theme";
 import { Ionicons } from "@expo/vector-icons";
+import { useFonts } from "expo-font";
 import type { ComponentProps } from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Image,
   StyleSheet,
@@ -17,6 +18,15 @@ type IconName = ComponentProps<typeof Ionicons>["name"];
 const LOGO = require("../../assets/logo/logo.png");
 
 const SOFT = "#5B6385";
+
+export function useReady() {
+  const [mounted, setMounted] = useState(false);
+  const [fontsLoaded, fontError] = useFonts(Ionicons.font);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+  return mounted && (fontsLoaded || !!fontError);
+}
 
 export const FEATURES: { icon: IconName; title: string; text: string }[] = [
   {

@@ -1,4 +1,4 @@
-import { BrandBackdrop } from "@/components/AuthShared";
+import { BrandBackdrop, useReady } from "@/components/AuthShared";
 import { Button } from "@/components/ui";
 import { colors } from "@/theme";
 import { useRouter } from "expo-router";
@@ -16,6 +16,9 @@ export default function NotFound() {
   const router = useRouter();
   const { width } = useWindowDimensions();
   const phone = width < 640;
+  const ready = useReady();
+
+  if (!ready) return <View style={{ flex: 1, backgroundColor: colors.navy }} />;
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.navy, overflow: "hidden" }}>
