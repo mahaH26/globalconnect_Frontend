@@ -12,7 +12,6 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-// Company logo (transparent PNG): <project root>/assets/logo/logo.png
 const LOGO = require("../../assets/logo/logo.png");
 
 const SOFT = "#5B6385";
@@ -45,7 +44,6 @@ function pageLabel(
   }
 }
 
-/** Slim light top bar: page breadcrumb on the left, bell and avatar on the right */
 export default function AppHeader({
   routeName,
   title,
@@ -75,23 +73,28 @@ export default function AppHeader({
         backgroundColor: "#FFFFFF",
         borderBottomWidth: 1,
         borderBottomColor: colors.border,
-        paddingTop: insets.top + 12,
-        paddingBottom: 12,
-        paddingHorizontal: wide ? 24 : 16,
+        paddingTop: insets.top + 10,
+        paddingBottom: 10,
+        paddingHorizontal: wide ? 24 : 14,
         flexDirection: "row",
         alignItems: "center",
-        gap: 12,
+        gap: 10,
       }}
     >
-      {/* Breadcrumb */}
       <View
-        style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 8 }}
+        style={{
+          flex: 1,
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 10,
+          minWidth: 0,
+        }}
       >
         {wide ? null : (
           <Image
             source={LOGO}
             resizeMode="contain"
-            style={{ width: 28, height: 28, marginRight: 4 }}
+            style={{ width: 120, height: 42 }}
           />
         )}
         {wide ? (
@@ -103,16 +106,17 @@ export default function AppHeader({
         <Text
           numberOfLines={1}
           style={{
+            flex: wide ? undefined : 1,
             color: colors.navy,
-            fontSize: wide ? 13 : 17,
+            fontSize: wide ? 13 : 15,
             fontWeight: wide ? "500" : "700",
+            textAlign: wide ? "left" : "right",
           }}
         >
           {label}
         </Text>
       </View>
 
-      {/* Admin indicator */}
       {isAdmin && wide ? (
         <>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
@@ -132,26 +136,25 @@ export default function AppHeader({
         </>
       ) : null}
 
-      {/* Bell */}
       <Pressable
         onPress={() => router.push("/notifications" as any)}
         accessibilityLabel="Notifications"
         style={(s: any) => ({
-          width: 36,
-          height: 36,
-          borderRadius: 18,
+          width: 38,
+          height: 38,
+          borderRadius: 19,
           alignItems: "center",
           justifyContent: "center",
           backgroundColor: s.hovered ? "#F4F5FA" : "transparent",
         })}
       >
-        <Ionicons name="notifications-outline" size={21} color={SOFT} />
+        <Ionicons name="notifications-outline" size={22} color={SOFT} />
         {unreadCount > 0 ? (
           <View
             style={{
               position: "absolute",
-              top: 7,
-              right: 8,
+              top: 8,
+              right: 9,
               width: 9,
               height: 9,
               borderRadius: 5,
@@ -163,7 +166,6 @@ export default function AppHeader({
         ) : null}
       </Pressable>
 
-      {/* Avatar */}
       <Pressable
         onPress={() => router.push("/profile" as any)}
         accessibilityLabel="Profile"
