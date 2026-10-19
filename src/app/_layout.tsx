@@ -1,6 +1,6 @@
 import { AuthProvider } from "@/context/AuthContext";
 import { NotificationProvider } from "@/context/NotificationContext";
-import { colors } from "@/theme"; // point this at wherever theme.ts lives
+import { colors } from "@/theme";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { View } from "react-native";

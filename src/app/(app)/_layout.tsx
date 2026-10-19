@@ -16,7 +16,6 @@ import {
 
 type IconName = ComponentProps<typeof Ionicons>["name"];
 
-// Minimal outline icons (Ionicons ships with Expo — no install needed).
 const icon =
   (name: string) =>
   ({ color, focused }: { color: ColorValue; focused: boolean }) => (

@@ -23,7 +23,6 @@ import {
   View,
 } from "react-native";
 
-// Company logo (transparent PNG): <project root>/assets/logo/logo.png
 const LOGO = require("../../../assets/logo/logo.png");
 
 type IconName = ComponentProps<typeof Ionicons>["name"];
