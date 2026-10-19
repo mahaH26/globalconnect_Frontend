@@ -3,6 +3,7 @@ import {
   FEATURES,
   LoginForm,
   Logo,
+  useReady,
 } from "@/components/AuthShared";
 import { useAuth } from "@/context/AuthContext";
 import { colors } from "@/theme";
@@ -103,8 +104,10 @@ export default function Login() {
   const [showFeatures, setShowFeatures] = useState(false);
   const split = width >= 900;
   const phone = width < 640;
+  const ready = useReady();
 
   if (!loading && user) return <Redirect href="/" />;
+  if (!ready) return <View style={{ flex: 1, backgroundColor: "#FFFFFF" }} />;
 
   const form = (
     <View style={{ width: "100%", maxWidth: 400, gap: phone ? 24 : 32 }}>
@@ -241,9 +244,7 @@ export default function Login() {
               }}
             >
               <Ionicons name="log-in-outline" size={17} color="#FFFFFF" />
-              <Text
-                style={{ color: "#FFFFFF", fontWeight: "600", fontSize: 14 }}
-              >
+              <Text style={{ color: "#FFFFFF", fontWeight: "600", fontSize: 14 }}>
                 Back to log in
               </Text>
             </Pressable>
