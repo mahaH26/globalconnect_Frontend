@@ -104,7 +104,7 @@ export default function ChatRoom() {
           }}
         >
           <Pressable
-            onPress={() => router.back()}
+            onPress={() => router.replace("/chat" as any)}
             accessibilityLabel="Back"
             style={(s: any) => ({
               width: 36,
