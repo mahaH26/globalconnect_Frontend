@@ -17,14 +17,95 @@ import {
 } from "@/components/ui";
 import { useAuth } from "@/context/AuthContext";
 import { api } from "@/lib/api";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { View, useWindowDimensions } from "react-native";
 
 export default function Profile() {
-  const { user, logout } = useAuth();
+  const auth = useAuth() as any;
+  const { user, logout } = auth;
   const { width } = useWindowDimensions();
   const wide = width >= 1000;
 
+  // ---- name ----
+  const [name, setName] = useState(user?.full_name ?? "");
+  const [nameBusy, setNameBusy] = useState(false);
+  const [nameError, setNameError] = useState<string | null>(null);
+  const [nameSuccess, setNameSuccess] = useState<string | null>(null);
+
+  // keep the field in sync if the user object changes elsewhere
+  useEffect(() => {
+    setName(user?.full_name ?? "");
+  }, [user?.full_name]);
+
+  const cleanName = name.trim().replace(/\s+/g, " ");
+  const nameChanged = cleanName !== (user?.full_name ?? "");
+
+  async function saveName() {
+    setNameError(null);
+    setNameSuccess(null);
+    if (cleanName.length < 2)
+      return setNameError("Name must be at least 2 characters.");
+    if (cleanName.length > 60)
+      return setNameError("Name must be 60 characters or fewer.");
+    if (!nameChanged) return;
+
+    setNameBusy(true);
+    try {
+      await api("/me", { method: "PATCH", body: { full_name: cleanName } });
+
+      // Update the logged-in user everywhere (sidebar, header, avatar, lists...)
+      if (typeof auth.refreshUser === "function") {
+        await auth.refreshUser();
+      } else if (typeof auth.setUser === "function") {
+        auth.setUser({ ...user, full_name: cleanName });
+      }
+
+      setName(cleanName);
+      setNameSuccess("Name updated.");
+    } catch (e: any) {
+      setNameError(e?.message ?? "Could not update name");
+    } finally {
+      setNameBusy(false);
+    }
+  }
+
+  // ---- email (admin only) ----
+  const isAdmin = user?.role === "admin";
+  const [email, setEmail] = useState(user?.email ?? "");
+  const [emailBusy, setEmailBusy] = useState(false);
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [emailSuccess, setEmailSuccess] = useState<string | null>(null);
+
+  useEffect(() => {
+    setEmail(user?.email ?? "");
+  }, [user?.email]);
+
+  const cleanEmail = email.trim().toLowerCase();
+  const emailChanged = cleanEmail !== (user?.email ?? "").toLowerCase();
+
+  async function saveEmail() {
+    setEmailError(null);
+    setEmailSuccess(null);
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail))
+      return setEmailError("Enter a valid email address.");
+    if (!emailChanged) return;
+
+    setEmailBusy(true);
+    try {
+      await api("/me", { method: "PATCH", body: { email: cleanEmail } });
+      if (typeof auth.refreshUser === "function") await auth.refreshUser();
+      else if (typeof auth.setUser === "function")
+        auth.setUser({ ...user, email: cleanEmail });
+      setEmail(cleanEmail);
+      setEmailSuccess("Email updated. Use it the next time you log in.");
+    } catch (e: any) {
+      setEmailError(e?.message ?? "Could not update email");
+    } finally {
+      setEmailBusy(false);
+    }
+  }
+
+  // ---- password ----
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -82,6 +163,67 @@ export default function Profile() {
     </Card>
   );
 
+  const nameCard = (
+    <Card style={{ gap: 14 }}>
+      <CardTitle
+        title="Display name"
+        subtitle="Shown to your team in chat, attendance and notifications."
+      />
+      <Field
+        label="Full name"
+        placeholder="Your full name"
+        autoCapitalize="words"
+        value={name}
+        onChangeText={(t: string) => {
+          setName(t);
+          setNameSuccess(null);
+        }}
+        onSubmitEditing={saveName}
+        maxLength={60}
+      />
+      <ErrorText>{nameError}</ErrorText>
+      <Notice tone="good">{nameSuccess}</Notice>
+      <Button
+        title="Save name"
+        icon="checkmark-outline"
+        onPress={saveName}
+        loading={nameBusy}
+        disabled={!nameChanged || nameBusy}
+      />
+    </Card>
+  );
+
+  const emailCard = isAdmin ? (
+    <Card style={{ gap: 14 }}>
+      <CardTitle
+        title="Email address"
+        subtitle="Admin only. This is the email you use to log in."
+      />
+      <Field
+        label="Email"
+        placeholder="name@company.com"
+        autoCapitalize="none"
+        autoCorrect={false}
+        keyboardType="email-address"
+        value={email}
+        onChangeText={(t: string) => {
+          setEmail(t);
+          setEmailSuccess(null);
+        }}
+        onSubmitEditing={saveEmail}
+      />
+      <ErrorText>{emailError}</ErrorText>
+      <Notice tone="good">{emailSuccess}</Notice>
+      <Button
+        title="Save email"
+        icon="mail-outline"
+        onPress={saveEmail}
+        loading={emailBusy}
+        disabled={!emailChanged || emailBusy}
+      />
+    </Card>
+  ) : null;
+
   const passwordCard = (
     <Card style={{ gap: 14 }}>
       <CardTitle
@@ -132,7 +274,7 @@ export default function Profile() {
     <Screen>
       <PageHeader
         title="Profile"
-        subtitle="Your account details and password"
+        subtitle="Your account details, name and password"
       />
       {wide ? (
         <View
@@ -142,11 +284,17 @@ export default function Profile() {
             {profileCard}
             {logoutButton}
           </View>
-          <View style={{ flex: 1.4 }}>{passwordCard}</View>
+          <View style={{ flex: 1.4, gap: 16 }}>
+            {nameCard}
+            {emailCard}
+            {passwordCard}
+          </View>
         </View>
       ) : (
         <>
           {profileCard}
+          {nameCard}
+          {emailCard}
           {passwordCard}
           {logoutButton}
         </>
