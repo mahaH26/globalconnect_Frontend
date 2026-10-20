@@ -1,56 +1,58 @@
-# Welcome to your Expo app 👋
+# Global Connect - Backend API
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+[![Frontend Repository](https://img.shields.io/badge/Frontend-Repository-blue?style=flat-square&logo=github)](https://github.com/mahaH26/globalconnect_Frontend)
+[![Backend Repository](https://img.shields.io/badge/Backend-Repository-green?style=flat-square&logo=github)](https://github.com/mahaH26/globalconnect_Backend)
 
-## Get started
+Global Connect is a comprehensive people-management workspace platform designed to handle staff attendance, leave management, employee progression, team communication, and administrative reporting. This repository contains the backend REST API component, structured to securely manage business logic, database transactions, and role-based access control.
 
-1. Install dependencies
+---
 
-   ```bash
-   npm install
-   ```
+## 🛠️ Tools and Technologies
 
-2. Start the app
+- **Language & Runtime:** Node.js, TypeScript
+- **Server & Routing:** Express 5 (mounting 14 dedicated route modules)
+- **Database & Auth:** Supabase (`@supabase/supabase-js`, PostgreSQL)
+- **Validation & Security:** Zod (for robust request body and query string validation), CORS, dotenv
+- **Export Utilities:** ExcelJS (`.xlsx`), PDFKit (Landscape A4 reports with custom headers)
+- **Development Server:** `tsx` for auto-reloading during development
+- **Testing Stack:** Jest, Supertest, and `@swc/jest` for high-speed TypeScript compilation
 
-   ```bash
-   npx expo start
-   ```
+---
 
-In the output, you'll find options to open the app in a
+## 🚀 Detailed System Architecture & Features
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+### 1. Authentication & Role-Based Access Control (RBAC)
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+- **Secure Token Handling:** Routes are protected via authentication guards (`requireAuth`) that validate Supabase bearer tokens. Admin-only routes require additional manager clearance (`requireManager`).
+- **Credentials & Refresh:** Endpoints support secure login, session refreshing, and password updating rules (requiring current password verification and strict character guidelines).
+- **Account Status Enforcement:** Suspended or terminated accounts are automatically blocked at login and across protected requests.
 
-## Get a fresh project
+### 2. GPS Attendance Engine
 
-When you're ready, run:
+- **Geofencing & Verification:** Uses the Haversine formula to compute great-circle distance in meters between device coordinates and registered office locations, flagging out-of-radius check-ins.
+- **Time & Grace Period Logic:** Computes local times based on configured UTC offsets, assigning "present", "late" (with grace period buffers), "early check-out", or "overtime" statuses alongside automated point rewards/penalties.
+- **Summaries:** Calculates comprehensive monthly attendance statistics, expected working days, and attendance rates.
 
-```bash
-npm run reset-project
-```
+### 3. Leave Management & Team Conflicts
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+- **Request Processing:** Validates leave types (annual, sick, emergency, unpaid) and dates, automatically excluding weekends and ensuring balances (allowance minus approved/pending days) are respected.
+- **Conflict Warning:** Scans for department colleagues with overlapping approved or pending leave to warn staff and administrators.
 
-### Other setup steps
+### 4. Employee Administration & Progression
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+- **Staff Management:** Admins can create pre-confirmed accounts, modify profile fields, reset passwords, and perform soft-deactivations (terminations with login bans).
+- **Levels & Milestones:** Tracks points and tenure months to determine promotion eligibility, handles promotional overrides, and records notable milestones.
 
-## Learn more
+### 5. Dashboards, Reports, & Notifications
 
-To learn more about developing your project with Expo, look at the following resources:
+- **Admin Dashboard:** Pulls real-time daily metrics including total active staff, attendance rates, pending requests, and unread notifications.
+- **Exportable Reports:** Generates filtered reports for attendance, lateness, absence, overtime, and progression in JSON, Excel (`.xlsx`), or PDF formats.
+- **Chat & Notifications:** Manages direct and group messaging conversations (with sorted pair keys for uniqueness) alongside automated system notifications.
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+---
 
-## Join the community
+## 🧪 Testing Methodology & Coverage
 
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+- **Approach:** Automated backend tests run in-memory using Jest and Supertest (`jest --runInBand`) without exposing external network ports.
+- **Test Doubles:** Supabase clients, system clocks, notification spies, and authentication headers (`x-test-role`) are fully mocked for isolated and repeatable test executions.
+- **Suites:** Includes unit test suites for input validation (`validate.test.ts`), integration tests for attendance (`attendance.test.ts`) and leave (`leave.test.ts`), and security guard validations (`permissions.test.ts`, `auth-guard.test.ts`).
