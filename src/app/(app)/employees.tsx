@@ -25,6 +25,7 @@ interface Employee {
   role: string;
   employment_status: string;
   attendance_points: number;
+  avatar_url?: string | null;
   departments: { name: string } | null;
   progression_levels: { name: string } | null;
 }
@@ -69,9 +70,17 @@ export default function EmployeesScreen() {
             }}
           >
             <Title>Employees</Title>
-            <Button small title="+ Add" onPress={() => router.push("/employee-new" as any)} />
+            <Button
+              small
+              title="+ Add"
+              onPress={() => router.push("/employee-new" as any)}
+            />
           </View>
-          <Field placeholder="Search by name" value={search} onChangeText={setSearch} />
+          <Field
+            placeholder="Search by name"
+            value={search}
+            onChangeText={setSearch}
+          />
           <ErrorText>{error}</ErrorText>
           <Muted>{rows.length} employee(s)</Muted>
         </View>
@@ -80,11 +89,19 @@ export default function EmployeesScreen() {
       renderItem={({ item }) => (
         <Card
           onPress={() =>
-            router.push({ pathname: "/employee-detail", params: { id: item.id } } as any)
+            router.push({
+              pathname: "/employee-detail",
+              params: { id: item.id },
+            } as any)
           }
-          style={{ marginBottom: 10, flexDirection: "row", alignItems: "center", gap: 12 }}
+          style={{
+            marginBottom: 10,
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 12,
+          }}
         >
-          <Avatar name={item.full_name} />
+          <Avatar name={item.full_name} uri={item.avatar_url} />
           <View style={{ flex: 1, gap: 2 }}>
             <Text
               style={{ fontSize: 16, fontWeight: "700", color: colors.text }}
@@ -94,14 +111,19 @@ export default function EmployeesScreen() {
               {item.role === "admin" ? "  (admin)" : ""}
             </Text>
             <Muted>
-              {[item.position, item.departments?.name].filter(Boolean).join(" · ") ||
-                "No position"}
+              {[item.position, item.departments?.name]
+                .filter(Boolean)
+                .join(" · ") || "No position"}
             </Muted>
             <Muted>
-              {item.progression_levels?.name ?? "No level"} · {item.attendance_points} pts
+              {item.progression_levels?.name ?? "No level"} ·{" "}
+              {item.attendance_points} pts
             </Muted>
           </View>
-          <Badge text={item.employment_status} tone={toneFor(item.employment_status)} />
+          <Badge
+            text={item.employment_status}
+            tone={toneFor(item.employment_status)}
+          />
         </Card>
       )}
     />

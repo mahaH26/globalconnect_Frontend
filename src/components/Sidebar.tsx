@@ -1,3 +1,4 @@
+import UserAvatar from "@/components/UserAvatar";
 import { useAuth } from "@/context/AuthContext";
 import { colors } from "@/theme";
 import { Ionicons } from "@expo/vector-icons";
@@ -33,8 +34,6 @@ const LOGO = require("../../assets/logo/logo.png");
 
 const FULL_WIDTH = 224;
 const RAIL_WIDTH = 72;
-const ACTIVE_BG = "#FDE9F0";
-const SOFT = "#5B6385";
 
 function useDisplayName() {
   const { user } = useAuth();
@@ -46,7 +45,8 @@ function useDisplayName() {
     .slice(0, 2)
     .join("")
     .toUpperCase();
-  return { displayName, initials };
+  const avatarUrl: string | null = (user as any)?.avatar_url ?? null;
+  return { displayName, initials, avatarUrl };
 }
 
 function NavRow({
@@ -78,9 +78,9 @@ function NavRow({
         paddingHorizontal: 15,
         borderRadius: 10,
         backgroundColor: active
-          ? ACTIVE_BG
+          ? colors.accentSoft
           : s.hovered
-            ? "#F4F5FA"
+            ? colors.hover
             : "transparent",
       })}
     >
@@ -88,7 +88,7 @@ function NavRow({
         <Ionicons
           name={(active ? icon : `${icon}-outline`) as IconName}
           size={18}
-          color={active ? colors.primary : SOFT}
+          color={active ? colors.primary : colors.soft}
         />
         {compact && badge ? (
           <View
@@ -111,7 +111,7 @@ function NavRow({
             flex: 1,
             fontSize: 14,
             fontWeight: active ? "600" : "500",
-            color: active ? colors.primary : SOFT,
+            color: active ? colors.primary : colors.soft,
           }}
         >
           {label}
@@ -124,12 +124,18 @@ function NavRow({
             height: 20,
             paddingHorizontal: 6,
             borderRadius: 10,
-            backgroundColor: "#FDF1D8",
+            backgroundColor: colors.warningSoft,
             alignItems: "center",
             justifyContent: "center",
           }}
         >
-          <Text style={{ fontSize: 11, fontWeight: "700", color: "#B7791F" }}>
+          <Text
+            style={{
+              fontSize: 11,
+              fontWeight: "700",
+              color: colors.warningText,
+            }}
+          >
             {badge}
           </Text>
         </View>
@@ -151,7 +157,7 @@ export default function Sidebar({
 }) {
   const { logout } = useAuth();
   const router = useRouter();
-  const { displayName, initials } = useDisplayName();
+  const { displayName, avatarUrl } = useDisplayName();
   const active = state.routes[state.index]?.name;
 
   const [expanded, setExpanded] = useState(false);
@@ -182,7 +188,7 @@ export default function Sidebar({
           bottom: 0,
           left: 0,
           width: widthAnim,
-          backgroundColor: "#FFFFFF",
+          backgroundColor: colors.card,
           borderRightWidth: 1,
           borderRightColor: colors.border,
           paddingTop: 24,
@@ -191,7 +197,7 @@ export default function Sidebar({
           justifyContent: "space-between",
           overflow: "hidden",
           ...(hoverExpand && expanded
-            ? ({ boxShadow: "4px 0 24px rgba(20,24,56,0.08)" } as any)
+            ? ({ boxShadow: "4px 0 24px rgba(20,24,56,0.12)" } as any)
             : null),
         }}
       >
@@ -292,33 +298,14 @@ export default function Sidebar({
               opacity: s.hovered ? 0.8 : 1,
             })}
           >
-            <View
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: 18,
-                backgroundColor: ACTIVE_BG,
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <Text
-                style={{
-                  color: colors.primary,
-                  fontWeight: "700",
-                  fontSize: 13,
-                }}
-              >
-                {initials}
-              </Text>
-            </View>
+            <UserAvatar name={displayName} uri={avatarUrl} size={36} />
             {compact ? null : (
               <>
                 <View style={{ flex: 1 }}>
                   <Text
                     numberOfLines={1}
                     style={{
-                      color: colors.navy,
+                      color: colors.navyText,
                       fontWeight: "600",
                       fontSize: 13,
                     }}
@@ -355,7 +342,7 @@ export function BottomNav({
   const { logout } = useAuth();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { displayName, initials } = useDisplayName();
+  const { displayName, avatarUrl } = useDisplayName();
   const [open, setOpen] = useState(false);
   const active = state.routes[state.index]?.name;
 
@@ -383,7 +370,7 @@ export function BottomNav({
       <View
         style={{
           flexDirection: "row",
-          backgroundColor: "#FFFFFF",
+          backgroundColor: colors.card,
           borderTopWidth: 1,
           borderTopColor: colors.border,
           paddingTop: 8,
@@ -409,13 +396,13 @@ export function BottomNav({
                   paddingHorizontal: 16,
                   paddingVertical: 4,
                   borderRadius: 12,
-                  backgroundColor: on ? ACTIVE_BG : "transparent",
+                  backgroundColor: on ? colors.accentSoft : "transparent",
                 }}
               >
                 <Ionicons
                   name={(on ? it.icon : `${it.icon}-outline`) as IconName}
                   size={22}
-                  color={on ? colors.primary : SOFT}
+                  color={on ? colors.primary : colors.soft}
                 />
               </View>
               <Text
@@ -423,7 +410,7 @@ export function BottomNav({
                 style={{
                   fontSize: 11,
                   fontWeight: on ? "700" : "500",
-                  color: on ? colors.primary : SOFT,
+                  color: on ? colors.primary : colors.soft,
                 }}
               >
                 {it.label}
@@ -441,13 +428,13 @@ export function BottomNav({
               paddingHorizontal: 16,
               paddingVertical: 4,
               borderRadius: 12,
-              backgroundColor: moreActive ? ACTIVE_BG : "transparent",
+              backgroundColor: moreActive ? colors.accentSoft : "transparent",
             }}
           >
             <Ionicons
               name="grid-outline"
               size={22}
-              color={moreActive ? colors.primary : SOFT}
+              color={moreActive ? colors.primary : colors.soft}
             />
             {moreBadge ? (
               <View
@@ -467,7 +454,7 @@ export function BottomNav({
             style={{
               fontSize: 11,
               fontWeight: moreActive ? "700" : "500",
-              color: moreActive ? colors.primary : SOFT,
+              color: moreActive ? colors.primary : colors.soft,
             }}
           >
             More
@@ -483,11 +470,11 @@ export function BottomNav({
       >
         <Pressable
           onPress={() => setOpen(false)}
-          style={{ flex: 1, backgroundColor: "rgba(20,24,56,0.35)" }}
+          style={{ flex: 1, backgroundColor: "rgba(8,10,28,0.5)" }}
         />
         <View
           style={{
-            backgroundColor: "#FFFFFF",
+            backgroundColor: colors.card,
             borderTopLeftRadius: 20,
             borderTopRightRadius: 20,
             paddingTop: 10,
@@ -518,24 +505,15 @@ export function BottomNav({
               borderBottomColor: colors.border,
             }}
           >
-            <View
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: 20,
-                backgroundColor: ACTIVE_BG,
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <Text style={{ color: colors.primary, fontWeight: "700" }}>
-                {initials}
-              </Text>
-            </View>
+            <UserAvatar name={displayName} uri={avatarUrl} size={40} />
             <View style={{ flex: 1 }}>
               <Text
                 numberOfLines={1}
-                style={{ color: colors.navy, fontWeight: "600", fontSize: 14 }}
+                style={{
+                  color: colors.navyText,
+                  fontWeight: "600",
+                  fontSize: 14,
+                }}
               >
                 {displayName}
               </Text>

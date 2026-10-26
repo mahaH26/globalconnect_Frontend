@@ -21,9 +21,10 @@ interface Person {
   id: string;
   full_name: string;
   role: string;
+  avatar_url?: string | null;
 }
 
-const SOFT = "#5B6385";
+//const SOFT = "#5B6385";
 
 export default function ChatNew() {
   const router = useRouter();
@@ -148,7 +149,7 @@ export default function ChatNew() {
               }}
             >
               <Row>
-                <Avatar name={item.full_name} />
+                <Avatar name={item.full_name} uri={item.avatar_url} />
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontWeight: "700", color: colors.text }}>
                     {item.full_name}

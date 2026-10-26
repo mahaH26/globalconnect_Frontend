@@ -34,7 +34,13 @@
         }
       ],
       "expo-secure-store",
-      "expo-sharing"
+      "expo-sharing",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Global Connect to use your photo as a profile picture."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

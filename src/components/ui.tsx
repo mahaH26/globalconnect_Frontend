@@ -1,8 +1,9 @@
-import { colors, radius } from "@/theme";
+import { colors, radius, themeVersion } from "@/theme";
 import { Ionicons } from "@expo/vector-icons";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
+  Image,
   Platform,
   Pressable,
   RefreshControl,
@@ -19,17 +20,16 @@ import {
 type IconName = React.ComponentProps<typeof Ionicons>["name"];
 const isIcon = (n: string): n is IconName => n in Ionicons.glyphMap;
 
-const SOFT = "#5B6385";
-
 export type Tone = "good" | "warn" | "bad" | "info" | "neutral";
 
-const toneColors: Record<Tone, { bg: string; fg: string }> = {
+// Built on demand so it always reflects the current theme
+const toneColors = (): Record<Tone, { bg: string; fg: string }> => ({
   good: { bg: colors.successSoft, fg: colors.success },
   warn: { bg: colors.warningSoft, fg: colors.warning },
   bad: { bg: colors.dangerSoft, fg: colors.danger },
-  info: { bg: colors.navySoft, fg: colors.navy },
+  info: { bg: colors.navySoft, fg: colors.navyText },
   neutral: { bg: colors.navySoft, fg: colors.muted },
-};
+});
 
 const toneIcons: Record<Tone, IconName> = {
   good: "checkmark-circle",
@@ -60,8 +60,13 @@ export function toneFor(status: string): Tone {
   }
 }
 
-// ---- layout helpers for FlatList screens ----
-export const listStyle: ViewStyle = { flex: 1, backgroundColor: colors.bg };
+// ---- layout helpers for FlatList screens (getters keep them theme-aware) ----
+export const listStyle: ViewStyle = {
+  flex: 1,
+  get backgroundColor() {
+    return colors.bg;
+  },
+};
 export const listContent: ViewStyle = {
   padding: 20,
   paddingBottom: 40,
@@ -79,6 +84,7 @@ export function Screen({
   onRefresh?: () => void;
   refreshing?: boolean;
 }) {
+  const styles = getStyles();
   const { width } = useWindowDimensions();
   const pad = width >= 700 ? 24 : 16;
   return (
@@ -101,7 +107,7 @@ export function Screen({
   );
 }
 
-/** Big page title with an optional subtitle and a right-aligned action (e.g. an Add button) */
+/** Big page title with an optional subtitle and a right-aligned action */
 export function PageHeader({
   title,
   subtitle,
@@ -111,6 +117,7 @@ export function PageHeader({
   subtitle?: string;
   action?: React.ReactNode;
 }) {
+  const styles = getStyles();
   return (
     <View
       style={{
@@ -141,6 +148,7 @@ export function Card({
   style?: ViewStyle;
   onPress?: () => void;
 }) {
+  const styles = getStyles();
   if (onPress) {
     return (
       <Pressable
@@ -148,7 +156,7 @@ export function Card({
         style={(s: any) => [
           styles.card,
           style,
-          s.hovered && { borderColor: "#D3D7EA" },
+          s.hovered && { borderColor: colors.hoverBorder },
           s.pressed && { opacity: 0.9 },
         ]}
       >
@@ -167,6 +175,7 @@ export function CardTitle({
   title: string;
   subtitle?: string;
 }) {
+  const styles = getStyles();
   return (
     <View style={{ gap: 2 }}>
       <Text style={styles.cardTitle}>{title}</Text>
@@ -176,10 +185,12 @@ export function CardTitle({
 }
 
 export function Title({ children }: { children: React.ReactNode }) {
+  const styles = getStyles();
   return <Text style={styles.title}>{children}</Text>;
 }
 
 export function Muted({ children }: { children: React.ReactNode }) {
+  const styles = getStyles();
   return <Text style={styles.muted}>{children}</Text>;
 }
 
@@ -192,6 +203,7 @@ export function Section({
   action?: string;
   onAction?: () => void;
 }) {
+  const styles = getStyles();
   return (
     <View style={styles.sectionRow}>
       <Text style={styles.sectionTitle}>{title}</Text>
@@ -223,22 +235,23 @@ export function Button({
   icon?: IconName;
   style?: ViewStyle;
 }) {
+  const styles = getStyles();
   const look = {
     primary: {
       bg: colors.primary,
-      hover: "#CC0043",
+      hover: colors.primaryHover,
       fg: colors.primaryText,
       border: "transparent",
     },
     secondary: {
-      bg: "#FFFFFF",
-      hover: "#F4F5FA",
-      fg: colors.navy,
+      bg: colors.inputBg,
+      hover: colors.hover,
+      fg: colors.navyText,
       border: colors.border,
     },
     danger: {
       bg: colors.dangerSoft,
-      hover: "#FADBD7",
+      hover: colors.dangerHover,
       fg: colors.danger,
       border: "transparent",
     },
@@ -296,6 +309,7 @@ export function Stat({
   value: string | number;
   tone?: "good" | "warn" | "bad";
 }) {
+  const styles = getStyles();
   const color =
     tone === "good"
       ? colors.success
@@ -313,6 +327,7 @@ export function Stat({
 }
 
 export function StatGrid({ children }: { children: React.ReactNode }) {
+  const styles = getStyles();
   return <View style={styles.grid}>{children}</View>;
 }
 
@@ -324,7 +339,7 @@ export function Notice({
   children?: React.ReactNode;
 }) {
   if (!children) return null;
-  const t = toneColors[tone];
+  const t = toneColors()[tone];
   return (
     <View
       style={{
@@ -365,6 +380,7 @@ export function Center({ children }: { children: React.ReactNode }) {
 }
 
 export function Empty({ text }: { text: string }) {
+  const styles = getStyles();
   return (
     <View style={{ alignItems: "center", paddingVertical: 48, gap: 12 }}>
       <View
@@ -391,7 +407,7 @@ export function Badge({
   text: string;
   tone?: Tone;
 }) {
-  const t = toneColors[tone];
+  const t = toneColors()[tone];
   return (
     <View
       style={{
@@ -421,17 +437,38 @@ export function Avatar({
   name,
   size = 44,
   bg,
+  uri,
 }: {
   name?: string | null;
   size?: number;
   bg?: string;
+  uri?: string | null;
 }) {
+  const [failed, setFailed] = useState(false);
+  React.useEffect(() => {
+    setFailed(false);
+  }, [uri]);
   const initials = (name || "?")
     .trim()
     .split(/\s+/)
     .slice(0, 2)
     .map((w) => w[0]?.toUpperCase() ?? "")
     .join("");
+  if (uri && !failed) {
+    return (
+      <Image
+        source={{ uri }}
+        resizeMode="cover"
+        onError={() => setFailed(true)}
+        style={{
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          backgroundColor: colors.accentSoft,
+        }}
+      />
+    );
+  }
   return (
     <View
       style={{
@@ -478,6 +515,7 @@ export function Field({
   half?: boolean;
   containerStyle?: ViewStyle;
 }) {
+  const styles = getStyles();
   const [focus, setFocus] = useState(false);
   return (
     <View
@@ -489,7 +527,7 @@ export function Field({
     >
       {label ? <Text style={styles.label}>{label}</Text> : null}
       <TextInput
-        placeholderTextColor="#9AA0C0"
+        placeholderTextColor={colors.placeholder}
         {...props}
         onFocus={(e) => {
           setFocus(true);
@@ -552,6 +590,7 @@ export function Chips<T extends string>({
   value: T;
   onChange: (v: T) => void;
 }) {
+  const styles = getStyles();
   return (
     <View style={{ gap: 8 }}>
       {label ? <Text style={styles.label}>{label}</Text> : null}
@@ -564,7 +603,7 @@ export function Chips<T extends string>({
               onPress={() => onChange(o.value)}
               style={(s: any) => [
                 styles.chip,
-                s.hovered && !on && { backgroundColor: "#F4F5FA" },
+                s.hovered && !on && { backgroundColor: colors.hover },
                 on && styles.chipOn,
               ]}
             >
@@ -585,16 +624,17 @@ export function Chips<T extends string>({
 }
 
 export function BackButton({ onPress }: { onPress: () => void }) {
+  const styles = getStyles();
   return (
     <Pressable
       onPress={onPress}
       style={(s: any) => [
         styles.back,
-        s.hovered && { backgroundColor: "#F4F5FA" },
+        s.hovered && { backgroundColor: colors.hover },
       ]}
     >
-      <Ionicons name="chevron-back" size={15} color={colors.navy} />
-      <Text style={{ color: colors.navy, fontWeight: "600", fontSize: 13 }}>
+      <Ionicons name="chevron-back" size={15} color={colors.navyText} />
+      <Text style={{ color: colors.navyText, fontWeight: "600", fontSize: 13 }}>
         Back
       </Text>
     </Pressable>
@@ -608,6 +648,7 @@ export function KV({
   label: string;
   value: React.ReactNode;
 }) {
+  const styles = getStyles();
   return (
     <View style={styles.kv}>
       <Text
@@ -643,6 +684,7 @@ export function Collapsible({
   children: React.ReactNode;
   defaultOpen?: boolean;
 }) {
+  const styles = getStyles();
   const [open, setOpen] = useState(defaultOpen);
   return (
     <View style={styles.collapsible}>
@@ -664,6 +706,7 @@ export function Collapsible({
 // ---- quick action tiles ----
 
 export function TileGrid({ children }: { children: React.ReactNode }) {
+  const styles = getStyles();
   return <View style={styles.tileGrid}>{children}</View>;
 }
 
@@ -681,7 +724,8 @@ export function ActionTile({
   badge?: number;
   accent?: boolean;
 }) {
-  const fg = accent ? colors.primary : colors.navy;
+  const styles = getStyles();
+  const fg = accent ? colors.primary : colors.navyText;
   return (
     <Pressable
       onPress={onPress}
@@ -713,148 +757,163 @@ export function ActionTile({
   );
 }
 
-const styles = StyleSheet.create({
-  screenInner: { width: "100%", maxWidth: 1040, gap: 16 },
-  card: {
-    backgroundColor: colors.card,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: 18,
-    gap: 8,
-  },
-  pageTitle: { fontSize: 26, fontWeight: "700", color: colors.text },
-  cardTitle: { fontSize: 15, fontWeight: "600", color: colors.text },
-  title: { fontSize: 22, fontWeight: "700", color: colors.text, flexShrink: 1 },
-  muted: { fontSize: 13, color: colors.muted },
-  sectionRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginTop: 4,
-  },
-  sectionTitle: { fontSize: 16, fontWeight: "600", color: colors.text },
-  sectionAction: { fontSize: 13, fontWeight: "600", color: colors.primary },
-  button: {
-    flexDirection: "row",
-    gap: 8,
-    paddingHorizontal: 18,
-    borderRadius: radius.sm,
-    borderWidth: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    minHeight: 44,
-  },
-  buttonSmall: {
-    paddingHorizontal: 14,
-    minHeight: 36,
-    alignSelf: "flex-start",
-  },
-  buttonText: { fontSize: 14, fontWeight: "600" },
-  grid: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
-  stat: {
-    flexGrow: 1,
-    flexBasis: 150,
-    backgroundColor: colors.card,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: 16,
-  },
-  statValue: { fontSize: 26, fontWeight: "700" },
-  statLabel: { fontSize: 13, color: colors.muted, marginTop: 2 },
-  label: { fontSize: 12, fontWeight: "600", color: SOFT },
-  input: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: radius.sm,
-    paddingHorizontal: 14,
-    paddingVertical: 11,
-    fontSize: 14,
-    color: colors.text,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  inputFocus: { borderColor: colors.primary },
-  chip: {
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 999,
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  chipOn: {
-    backgroundColor: colors.accentSoft,
-    borderColor: colors.accentSoft,
-  },
-  chipText: {
-    fontSize: 13,
-    fontWeight: "500",
-    color: SOFT,
-    textTransform: "capitalize",
-  },
-  back: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    alignSelf: "flex-start",
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingLeft: 8,
-    paddingRight: 14,
-    paddingVertical: 7,
-    borderRadius: 999,
-  },
-  kv: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: 12,
-    paddingVertical: 4,
-  },
-  collapsible: {
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  collapsibleHead: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: 16,
-  },
-  tileGrid: { flexDirection: "row", flexWrap: "wrap" },
-  tile: {
-    width: "25%",
-    alignItems: "center",
-    paddingVertical: 10,
-    paddingHorizontal: 2,
-    gap: 6,
-  },
-  tileIcon: {
-    width: 52,
-    height: 52,
-    borderRadius: 16,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  tileBadge: {
-    position: "absolute",
-    top: -4,
-    right: -4,
-    minWidth: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: colors.primary,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 5,
-  },
-  tileBadgeText: { color: "#fff", fontSize: 11, fontWeight: "700" },
-  tileLabel: {
-    fontSize: 12,
-    color: colors.text,
-    textAlign: "center",
-    fontWeight: "600",
-  },
-});
+// ---- styles: rebuilt whenever the theme changes ----
+
+const build = () =>
+  StyleSheet.create({
+    screenInner: { width: "100%", maxWidth: 1040, gap: 16 },
+    card: {
+      backgroundColor: colors.card,
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderColor: colors.border,
+      padding: 18,
+      gap: 8,
+    },
+    pageTitle: { fontSize: 26, fontWeight: "700", color: colors.text },
+    cardTitle: { fontSize: 15, fontWeight: "600", color: colors.text },
+    title: {
+      fontSize: 22,
+      fontWeight: "700",
+      color: colors.text,
+      flexShrink: 1,
+    },
+    muted: { fontSize: 13, color: colors.muted },
+    sectionRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginTop: 4,
+    },
+    sectionTitle: { fontSize: 16, fontWeight: "600", color: colors.text },
+    sectionAction: { fontSize: 13, fontWeight: "600", color: colors.primary },
+    button: {
+      flexDirection: "row",
+      gap: 8,
+      paddingHorizontal: 18,
+      borderRadius: radius.sm,
+      borderWidth: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      minHeight: 44,
+    },
+    buttonSmall: {
+      paddingHorizontal: 14,
+      minHeight: 36,
+      alignSelf: "flex-start",
+    },
+    buttonText: { fontSize: 14, fontWeight: "600" },
+    grid: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
+    stat: {
+      flexGrow: 1,
+      flexBasis: 150,
+      backgroundColor: colors.card,
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderColor: colors.border,
+      padding: 16,
+    },
+    statValue: { fontSize: 26, fontWeight: "700" },
+    statLabel: { fontSize: 13, color: colors.muted, marginTop: 2 },
+    label: { fontSize: 12, fontWeight: "600", color: colors.soft },
+    input: {
+      backgroundColor: colors.inputBg,
+      borderRadius: radius.sm,
+      paddingHorizontal: 14,
+      paddingVertical: 11,
+      fontSize: 14,
+      color: colors.text,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    inputFocus: { borderColor: colors.primary },
+    chip: {
+      paddingHorizontal: 14,
+      paddingVertical: 7,
+      borderRadius: 999,
+      backgroundColor: colors.inputBg,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    chipOn: {
+      backgroundColor: colors.accentSoft,
+      borderColor: colors.accentSoft,
+    },
+    chipText: {
+      fontSize: 13,
+      fontWeight: "500",
+      color: colors.soft,
+      textTransform: "capitalize",
+    },
+    back: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+      alignSelf: "flex-start",
+      backgroundColor: colors.inputBg,
+      borderWidth: 1,
+      borderColor: colors.border,
+      paddingLeft: 8,
+      paddingRight: 14,
+      paddingVertical: 7,
+      borderRadius: 999,
+    },
+    kv: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      gap: 12,
+      paddingVertical: 4,
+    },
+    collapsible: {
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    collapsibleHead: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      paddingVertical: 16,
+    },
+    tileGrid: { flexDirection: "row", flexWrap: "wrap" },
+    tile: {
+      width: "25%",
+      alignItems: "center",
+      paddingVertical: 10,
+      paddingHorizontal: 2,
+      gap: 6,
+    },
+    tileIcon: {
+      width: 52,
+      height: 52,
+      borderRadius: 16,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    tileBadge: {
+      position: "absolute",
+      top: -4,
+      right: -4,
+      minWidth: 20,
+      height: 20,
+      borderRadius: 10,
+      backgroundColor: colors.primary,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingHorizontal: 5,
+    },
+    tileBadgeText: { color: "#fff", fontSize: 11, fontWeight: "700" },
+    tileLabel: {
+      fontSize: 12,
+      color: colors.text,
+      textAlign: "center",
+      fontWeight: "600",
+    },
+  });
+
+let cache: { v: number; s: ReturnType<typeof build> } | null = null;
+function getStyles() {
+  const v = themeVersion();
+  if (!cache || cache.v !== v) cache = { v, s: build() };
+  return cache.s;
+}

@@ -14,6 +14,7 @@ export interface User {
   email: string | null;
   role: "employee" | "admin";
   position: string | null;
+  avatar_url?: string | null;
   attendance_points?: number;
 }
 

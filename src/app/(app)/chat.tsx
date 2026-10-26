@@ -1,5 +1,5 @@
+import UserAvatar from "@/components/UserAvatar";
 import {
-  Avatar,
   Card,
   Empty,
   ErrorText,
@@ -24,6 +24,7 @@ interface Conv {
   last_message: string | null;
   last_at: string | null;
   unread: number;
+  avatar_url?: string | null;
 }
 
 type Filter = "all" | "direct" | "group";
@@ -177,7 +178,11 @@ export default function ChatList() {
         >
           <Card style={{ marginBottom: 10 }}>
             <Row>
-              <Avatar name={item.name} />
+              <UserAvatar
+                name={item.name}
+                uri={item.avatar_url ?? null}
+                size={40}
+              />
               <View style={{ flex: 1, gap: 2 }}>
                 <View
                   style={{ flexDirection: "row", alignItems: "center", gap: 6 }}

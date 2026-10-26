@@ -18,7 +18,6 @@ const MONTHS = [
   "December",
 ];
 const WEEKDAYS = ["S", "M", "T", "W", "T", "F", "S"];
-const SOFT = "#5B6385";
 
 const pad = (n: number) => String(n).padStart(2, "0");
 const key = (y: number, m: number, d: number) => `${y}-${pad(m + 1)}-${pad(d)}`;
@@ -64,10 +63,10 @@ function NavCircle({
         borderRadius: 16,
         alignItems: "center",
         justifyContent: "center",
-        backgroundColor: s.hovered ? "#F4F5FA" : "transparent",
+        backgroundColor: s.hovered ? colors.hover : "transparent",
       })}
     >
-      <Ionicons name={icon} size={18} color={SOFT} />
+      <Ionicons name={icon} size={18} color={colors.soft} />
     </Pressable>
   );
 }
@@ -129,8 +128,8 @@ export default function CalendarPicker({
           paddingHorizontal: 14,
           borderRadius: 10,
           borderWidth: 1,
-          borderColor: s.hovered ? "#D3D7EA" : colors.border,
-          backgroundColor: "#FFFFFF",
+          borderColor: s.hovered ? colors.muted : colors.border,
+          backgroundColor: colors.inputBg,
         })}
       >
         <Ionicons name="calendar-outline" size={18} color={colors.primary} />
@@ -166,14 +165,14 @@ export default function CalendarPicker({
             onPress={() => setOpen(false)}
             style={[
               StyleSheet.absoluteFillObject,
-              { backgroundColor: "rgba(20,24,56,0.35)" },
+              { backgroundColor: "rgba(8,10,28,0.5)" },
             ]}
           />
           <View
             style={{
               width: "100%",
               maxWidth: 340,
-              backgroundColor: "#FFFFFF",
+              backgroundColor: colors.card,
               borderRadius: 16,
               borderWidth: 1,
               borderColor: colors.border,
@@ -216,7 +215,8 @@ export default function CalendarPicker({
                     textAlign: "center",
                     fontSize: 11,
                     fontWeight: "600",
-                    color: i >= 5 ? "#A5AAC8" : colors.muted,
+                    color: i >= 5 ? colors.border : colors.muted,
+                    opacity: i >= 5 ? 1 : 1,
                   }}
                 >
                   {w}
@@ -308,14 +308,24 @@ export default function CalendarPicker({
               {allowClear ? (
                 <Pressable onPress={() => pick("")} hitSlop={8}>
                   <Text
-                    style={{ color: SOFT, fontWeight: "600", fontSize: 13 }}
+                    style={{
+                      color: colors.soft,
+                      fontWeight: "600",
+                      fontSize: 13,
+                    }}
                   >
                     Show latest
                   </Text>
                 </Pressable>
               ) : null}
               <Pressable onPress={() => setOpen(false)} hitSlop={8}>
-                <Text style={{ color: SOFT, fontWeight: "600", fontSize: 13 }}>
+                <Text
+                  style={{
+                    color: colors.soft,
+                    fontWeight: "600",
+                    fontSize: 13,
+                  }}
+                >
                   Close
                 </Text>
               </Pressable>

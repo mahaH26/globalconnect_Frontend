@@ -17,14 +17,103 @@ import {
 } from "@/components/ui";
 import { useAuth } from "@/context/AuthContext";
 import { api } from "@/lib/api";
+import { colors } from "@/theme";
+import { Ionicons } from "@expo/vector-icons";
+import * as ImagePicker from "expo-image-picker";
 import { useEffect, useState } from "react";
-import { View, useWindowDimensions } from "react-native";
+import {
+  Image,
+  Platform,
+  Pressable,
+  View,
+  useWindowDimensions,
+} from "react-native";
 
 export default function Profile() {
   const auth = useAuth() as any;
   const { user, logout } = auth;
   const { width } = useWindowDimensions();
   const wide = width >= 1000;
+
+  // ---- photo ----
+  const [avatarBusy, setAvatarBusy] = useState(false);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
+
+  async function reloadUser(patch: Record<string, any>) {
+    if (typeof auth.refreshUser === "function") await auth.refreshUser();
+    else if (typeof auth.setUser === "function")
+      auth.setUser({ ...user, ...patch });
+  }
+
+  async function pickAvatar() {
+    setAvatarError(null);
+    try {
+      if (Platform.OS !== "web") {
+        const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (!perm.granted) {
+          return setAvatarError("Allow photo access to choose a picture.");
+        }
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images"],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.7,
+      });
+      if (result.canceled) return;
+
+      setAvatarBusy(true);
+      const asset = result.assets[0];
+      const sig = await api<any>("/me/avatar-signature", { method: "POST" });
+
+      const form = new FormData();
+      if (Platform.OS === "web") {
+        const blob = await (await fetch(asset.uri)).blob();
+        form.append("file", blob);
+      } else {
+        form.append("file", {
+          uri: asset.uri,
+          name: "avatar.jpg",
+          type: asset.mimeType ?? "image/jpeg",
+        } as any);
+      }
+      form.append("api_key", sig.api_key);
+      form.append("timestamp", String(sig.timestamp));
+      form.append("public_id", sig.public_id);
+      form.append("overwrite", sig.overwrite);
+      form.append("signature", sig.signature);
+
+      const up = await fetch(
+        `https://api.cloudinary.com/v1_1/${sig.cloud_name}/image/upload`,
+        { method: "POST", body: form },
+      );
+      const json = await up.json();
+      if (!up.ok) throw new Error(json?.error?.message ?? "Upload failed");
+
+      await api("/me", {
+        method: "PATCH",
+        body: { avatar_url: json.secure_url },
+      });
+      await reloadUser({ avatar_url: json.secure_url });
+    } catch (e: any) {
+      setAvatarError(e?.message ?? "Could not upload the photo");
+    } finally {
+      setAvatarBusy(false);
+    }
+  }
+
+  async function removeAvatar() {
+    setAvatarError(null);
+    setAvatarBusy(true);
+    try {
+      await api("/me", { method: "PATCH", body: { avatar_url: null } });
+      await reloadUser({ avatar_url: null });
+    } catch (e: any) {
+      setAvatarError(e?.message ?? "Could not remove the photo");
+    } finally {
+      setAvatarBusy(false);
+    }
+  }
 
   // ---- name ----
   const [name, setName] = useState(user?.full_name ?? "");
@@ -140,15 +229,68 @@ export default function Profile() {
     }
   }
 
+  const avatarNode = (
+    <Pressable
+      onPress={pickAvatar}
+      disabled={avatarBusy}
+      accessibilityLabel="Change profile photo"
+      style={{ width: 64, height: 64 }}
+    >
+      {user?.avatar_url ? (
+        <Image
+          source={{ uri: user.avatar_url }}
+          style={{
+            width: 64,
+            height: 64,
+            borderRadius: 32,
+            backgroundColor: colors.navySoft,
+            opacity: avatarBusy ? 0.5 : 1,
+          }}
+        />
+      ) : (
+        <View style={{ opacity: avatarBusy ? 0.5 : 1 }}>
+          <Avatar name={user?.full_name} size={64} />
+        </View>
+      )}
+      <View
+        style={{
+          position: "absolute",
+          right: -2,
+          bottom: -2,
+          width: 24,
+          height: 24,
+          borderRadius: 12,
+          backgroundColor: "#FFFFFF",
+          borderWidth: 1,
+          borderColor: colors.border,
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <Ionicons name="camera-outline" size={13} color="#5B6385" />
+      </View>
+    </Pressable>
+  );
+
   const profileCard = (
     <Card style={{ gap: 14 }}>
       <Row style={{ gap: 14 }}>
-        <Avatar name={user?.full_name} size={56} />
+        {avatarNode}
         <View style={{ flex: 1, gap: 4 }}>
           <Title>{user?.full_name || "Profile"}</Title>
           <Muted>{user?.email}</Muted>
         </View>
       </Row>
+      {user?.avatar_url ? (
+        <Button
+          title="Remove photo"
+          variant="ghost"
+          small
+          onPress={removeAvatar}
+          loading={avatarBusy}
+        />
+      ) : null}
+      <ErrorText>{avatarError}</ErrorText>
       <Divider />
       <View style={{ gap: 2 }}>
         <KV

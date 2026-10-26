@@ -1,4 +1,4 @@
-import { Button, ErrorText, Muted, Title } from "@/components/ui";
+import { Avatar, Button, ErrorText, Muted, Title } from "@/components/ui";
 import { useAuth } from "@/context/AuthContext";
 import { api } from "@/lib/api";
 import { colors } from "@/theme";
@@ -16,11 +16,10 @@ interface Msg {
 }
 interface Room {
   conversation: { id: string; type: "direct" | "group"; name: string | null };
-  members: { user_id: string; full_name: string }[];
+  members: { user_id: string; full_name: string; avatar_url?: string | null }[];
   messages: Msg[];
 }
 
-const SOFT = "#5B6385";
 const MAX_WIDTH = 720;
 
 const hhmm = (iso: string) =>
@@ -77,6 +76,9 @@ export default function ChatRoom() {
   };
 
   const isGroup = room?.conversation.type === "group";
+  const other = room?.members.find((m) => m.user_id !== user?.id);
+  const avatarOf = (id: string) =>
+    room?.members.find((m) => m.user_id === id)?.avatar_url ?? null;
   const title = isGroup
     ? (room?.conversation.name ?? "Group")
     : (room?.members.find((m) => m.user_id !== user?.id)?.full_name ?? "Chat");
@@ -88,7 +90,7 @@ export default function ChatRoom() {
         style={{
           borderBottomWidth: 1,
           borderBottomColor: colors.border,
-          backgroundColor: "#FFFFFF",
+          backgroundColor: colors.card,
         }}
       >
         <View
@@ -112,11 +114,14 @@ export default function ChatRoom() {
               borderRadius: 18,
               alignItems: "center",
               justifyContent: "center",
-              backgroundColor: s.hovered ? "#F4F5FA" : "transparent",
+              backgroundColor: s.hovered ? colors.hover : "transparent",
             })}
           >
-            <Ionicons name="chevron-back" size={20} color={SOFT} />
+            <Ionicons name="chevron-back" size={20} color={colors.soft} />
           </Pressable>
+          {!isGroup && other ? (
+            <Avatar name={other.full_name} uri={other.avatar_url} size={36} />
+          ) : null}
           <View style={{ flex: 1 }}>
             <Title>{title}</Title>
             {isGroup ? (
@@ -148,42 +153,58 @@ export default function ChatRoom() {
           return (
             <View
               style={{
+                flexDirection: "row",
+                alignItems: "flex-end",
+                gap: 8,
                 alignSelf: mine ? "flex-end" : "flex-start",
-                maxWidth: "80%",
-                backgroundColor: mine ? colors.primary : "#FFFFFF",
-                borderWidth: mine ? 0 : 1,
-                borderColor: colors.border,
-                borderRadius: 14,
-                borderBottomRightRadius: mine ? 4 : 14,
-                borderBottomLeftRadius: mine ? 14 : 4,
-                paddingVertical: 8,
-                paddingHorizontal: 12,
-                gap: 2,
+                maxWidth: "85%",
               }}
             >
-              {isGroup && !mine ? (
-                <Text
-                  style={{
-                    fontSize: 12,
-                    fontWeight: "700",
-                    color: colors.primary,
-                  }}
-                >
-                  {item.sender_name}
-                </Text>
-              ) : null}
-              <Text style={{ color: mine ? "#fff" : colors.text }}>
-                {item.body}
-              </Text>
-              <Text
+              {mine ? null : (
+                <Avatar
+                  name={item.sender_name}
+                  uri={avatarOf(item.sender_id)}
+                  size={28}
+                />
+              )}
+              <View
                 style={{
-                  fontSize: 11,
-                  color: mine ? "#FFD3E1" : colors.muted,
-                  alignSelf: "flex-end",
+                  flexShrink: 1,
+                  backgroundColor: mine ? colors.primary : colors.card,
+                  borderWidth: mine ? 0 : 1,
+                  borderColor: colors.border,
+                  borderRadius: 14,
+                  borderBottomRightRadius: mine ? 4 : 14,
+                  borderBottomLeftRadius: mine ? 14 : 4,
+                  paddingVertical: 8,
+                  paddingHorizontal: 12,
+                  gap: 2,
                 }}
               >
-                {hhmm(item.created_at)}
-              </Text>
+                {isGroup && !mine ? (
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      fontWeight: "700",
+                      color: colors.primary,
+                    }}
+                  >
+                    {item.sender_name}
+                  </Text>
+                ) : null}
+                <Text style={{ color: mine ? "#fff" : colors.text }}>
+                  {item.body}
+                </Text>
+                <Text
+                  style={{
+                    fontSize: 11,
+                    color: mine ? "#FFD3E1" : colors.muted,
+                    alignSelf: "flex-end",
+                  }}
+                >
+                  {hhmm(item.created_at)}
+                </Text>
+              </View>
             </View>
           );
         }}
@@ -194,7 +215,7 @@ export default function ChatRoom() {
         style={{
           borderTopWidth: 1,
           borderTopColor: colors.border,
-          backgroundColor: "#FFFFFF",
+          backgroundColor: colors.card,
         }}
       >
         <View
@@ -218,7 +239,7 @@ export default function ChatRoom() {
                 color: colors.text,
               }}
               placeholder="Type a message"
-              placeholderTextColor={colors.muted}
+              placeholderTextColor={colors.placeholder}
               value={text}
               onChangeText={setText}
               onSubmitEditing={send}
