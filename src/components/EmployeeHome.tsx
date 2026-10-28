@@ -1,3 +1,4 @@
+import { AIAssistantFab } from "@/components/AIAssistant";
 import {
   Button,
   Card,
@@ -25,6 +26,7 @@ interface Attendance {
   overtime_minutes: number;
   early_checkout: boolean;
 }
+
 interface Summary {
   month: string;
   present: number;
@@ -41,6 +43,7 @@ const TONES = {
   warn: { fg: "#D97706", bg: "#FDF1D8" },
   bad: { fg: "#E11D48", bg: "#FDE7EC" },
 } as const;
+
 type Tone = keyof typeof TONES;
 
 const time = (iso: string | null) =>
@@ -52,9 +55,10 @@ const time = (iso: string | null) =>
       })
     : "--:--";
 
-// Bahrain is UTC+3 all year
+// Bahrain uses UTC+3 year-round.
 const greeting = () => {
-  const h = new Date(Date.now() + 3 * 3600 * 1000).getUTCHours();
+  const h = new Date(Date.now() + 3 * 60 * 60 * 1000).getUTCHours();
+
   return h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
 };
 
@@ -87,6 +91,7 @@ function StatTile({
         >
           {value}
         </Text>
+
         <View
           style={{
             width: 32,
@@ -100,7 +105,14 @@ function StatTile({
           <Ionicons name={icon} size={16} color={TONES[tone].fg} />
         </View>
       </View>
-      <Text style={{ color: colors.muted, fontSize: 13, marginTop: 10 }}>
+
+      <Text
+        style={{
+          color: colors.muted,
+          fontSize: 13,
+          marginTop: 10,
+        }}
+      >
         {label}
       </Text>
     </Card>
@@ -110,6 +122,7 @@ function StatTile({
 export default function EmployeeHome() {
   const { user } = useAuth();
   const { width } = useWindowDimensions();
+
   const wide = width >= 1000;
   const cols = width >= 1000 ? 5 : width >= 700 ? 3 : 2;
 
@@ -122,64 +135,86 @@ export default function EmployeeHome() {
 
   const load = useCallback(async () => {
     setRefreshing(true);
+
     try {
-      const [t, s] = await Promise.all([
+      const [attendance, monthlySummary] = await Promise.all([
         api<Attendance | null>("/attendance/today"),
         api<Summary>("/attendance/me/summary"),
       ]);
-      setToday(t);
-      setSummary(s);
+
+      setToday(attendance);
+      setSummary(monthlySummary);
       setError(null);
-    } catch (e: any) {
-      setError(e.message);
+    } catch (e: unknown) {
+      setError(
+        e instanceof Error
+          ? e.message
+          : "Unable to load attendance information.",
+      );
     } finally {
       setRefreshing(false);
     }
   }, []);
 
   useEffect(() => {
-    load();
+    void load();
   }, [load]);
 
   async function punch(kind: "check-in" | "check-out") {
+    if (busy) return;
+
     setBusy(true);
     setError(null);
     setMessage(null);
+
     try {
-      const perm = await Location.requestForegroundPermissionsAsync();
-      if (perm.status !== "granted")
-        throw new Error("Location permission is required to check in.");
-      const pos = await Location.getCurrentPositionAsync({
+      const permission = await Location.requestForegroundPermissionsAsync();
+
+      if (permission.status !== "granted") {
+        throw new Error(
+          "Location permission is required to check in or check out.",
+        );
+      }
+
+      const position = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.High,
       });
+
       await api(`/attendance/${kind}`, {
         method: "POST",
         body: {
-          latitude: pos.coords.latitude,
-          longitude: pos.coords.longitude,
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
         },
       });
+
       setMessage(
         kind === "check-in"
           ? "Checked in successfully."
           : "Checked out successfully.",
       );
+
       await load();
-    } catch (e: any) {
+    } catch (e: unknown) {
       if (e instanceof ApiError && e.data?.distance_m !== undefined) {
         setError(`${e.message} (you are ${e.data.distance_m} m away).`);
       } else {
-        setError(e.message ?? "Something went wrong");
+        setError(
+          e instanceof Error
+            ? e.message
+            : "Something went wrong. Please try again.",
+        );
       }
     } finally {
       setBusy(false);
     }
   }
 
-  const checkedIn = !!today?.check_in;
-  const checkedOut = !!today?.check_out;
+  const checkedIn = Boolean(today?.check_in);
+  const checkedOut = Boolean(today?.check_out);
 
-  const firstName = user?.full_name?.split(" ")[0] || "there";
+  const firstName = user?.full_name?.trim().split(/\s+/)[0] || "there";
+
   const dateLabel = new Date().toLocaleDateString("en-GB", {
     weekday: "long",
     day: "numeric",
@@ -190,7 +225,13 @@ export default function EmployeeHome() {
 
   const pageHeader = (
     <View style={{ gap: 6, marginBottom: 4 }}>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 8,
+        }}
+      >
         <View
           style={{
             width: 6,
@@ -199,8 +240,10 @@ export default function EmployeeHome() {
             backgroundColor: colors.primary,
           }}
         />
+
         <Text style={{ color: "#5B6385", fontSize: 12 }}>{dateLabel}</Text>
       </View>
+
       <Text
         style={{
           color: colors.text,
@@ -211,6 +254,7 @@ export default function EmployeeHome() {
         {greeting()}, {firstName}
         <Text style={{ color: colors.primary }}>.</Text>
       </Text>
+
       <Text style={{ color: colors.muted, fontSize: 14 }}>
         Here's your day and how your month is going.
       </Text>
@@ -222,6 +266,7 @@ export default function EmployeeHome() {
     : checkedOut
       ? "Day complete"
       : "Checked in";
+
   const statusIcon: IconName = !checkedIn
     ? "time-outline"
     : checkedOut
@@ -245,6 +290,7 @@ export default function EmployeeHome() {
         }}
       >
         <Text style={{ color: "#C9CDE8", fontSize: 13 }}>Today</Text>
+
         <View
           style={{
             width: 40,
@@ -259,7 +305,13 @@ export default function EmployeeHome() {
         </View>
       </View>
 
-      <Text style={{ color: "#fff", fontSize: 30, fontWeight: "700" }}>
+      <Text
+        style={{
+          color: "#fff",
+          fontSize: 30,
+          fontWeight: "700",
+        }}
+      >
         {statusText}
       </Text>
 
@@ -272,12 +324,20 @@ export default function EmployeeHome() {
             gap: 18,
           }}
         >
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 6,
+            }}
+          >
             <Ionicons name="log-in-outline" size={16} color="#C9CDE8" />
+
             <Text style={{ color: "#C9CDE8", fontSize: 14 }}>
-              In {time(today!.check_in)}
+              In {time(today?.check_in ?? null)}
             </Text>
-            {today!.status === "late" ? (
+
+            {today?.status === "late" ? (
               <View
                 style={{
                   backgroundColor: "rgba(217,130,0,0.25)",
@@ -287,17 +347,29 @@ export default function EmployeeHome() {
                 }}
               >
                 <Text
-                  style={{ color: "#F7C469", fontSize: 11, fontWeight: "600" }}
+                  style={{
+                    color: "#F7C469",
+                    fontSize: 11,
+                    fontWeight: "600",
+                  }}
                 >
                   Late
                 </Text>
               </View>
             ) : null}
           </View>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 6,
+            }}
+          >
             <Ionicons name="log-out-outline" size={16} color="#C9CDE8" />
+
             <Text style={{ color: "#C9CDE8", fontSize: 14 }}>
-              Out {time(today!.check_out)}
+              Out {time(today?.check_out ?? null)}
             </Text>
           </View>
         </View>
@@ -311,7 +383,7 @@ export default function EmployeeHome() {
         <Button
           title={checkedIn ? "Check out" : "Check in"}
           icon={checkedIn ? "log-out-outline" : "log-in-outline"}
-          onPress={() => punch(checkedIn ? "check-out" : "check-in")}
+          onPress={() => void punch(checkedIn ? "check-out" : "check-in")}
           loading={busy}
           style={wide ? { alignSelf: "flex-start", minWidth: 180 } : undefined}
         />
@@ -320,16 +392,32 @@ export default function EmployeeHome() {
   );
 
   const rate = summary?.attendance_rate ?? null;
+
   const monthCard = summary ? (
     <Card style={{ gap: 14 }}>
       <CardTitle title="This month" subtitle={summary.month} />
-      <View style={{ flexDirection: "row", alignItems: "baseline", gap: 8 }}>
-        <Text style={{ color: colors.text, fontSize: 36, fontWeight: "700" }}>
+
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "baseline",
+          gap: 8,
+        }}
+      >
+        <Text
+          style={{
+            color: colors.text,
+            fontSize: 36,
+            fontWeight: "700",
+          }}
+        >
           {rate === null ? "-" : rate}
           {rate === null ? null : <Text style={{ fontSize: 20 }}>%</Text>}
         </Text>
+
         <Muted>attendance rate</Muted>
       </View>
+
       <View
         style={{
           height: 4,
@@ -346,6 +434,7 @@ export default function EmployeeHome() {
           }}
         />
       </View>
+
       <Muted>
         {summary.present} present · {summary.late} late · {summary.absent}{" "}
         absent
@@ -354,7 +443,13 @@ export default function EmployeeHome() {
   ) : null;
 
   const tiles = summary ? (
-    <View style={{ flexDirection: "row", flexWrap: "wrap", margin: -6 }}>
+    <View
+      style={{
+        flexDirection: "row",
+        flexWrap: "wrap",
+        margin: -6,
+      }}
+    >
       {(
         [
           ["Present", summary.present, "checkmark", "good"],
@@ -369,7 +464,13 @@ export default function EmployeeHome() {
           ],
         ] as [string, number, IconName, Tone][]
       ).map(([label, value, icon, tone]) => (
-        <View key={label} style={{ width: `${100 / cols}%`, padding: 6 }}>
+        <View
+          key={label}
+          style={{
+            width: `${100 / cols}%`,
+            padding: 6,
+          }}
+        >
           <StatTile label={label} value={value} icon={icon} tone={tone} />
         </View>
       ))}
@@ -380,14 +481,20 @@ export default function EmployeeHome() {
     <Screen onRefresh={load} refreshing={refreshing}>
       <View style={{ gap: 20 }}>
         {pageHeader}
+
         <ErrorText>{error}</ErrorText>
         <Notice tone="good">{message}</Notice>
 
         {wide ? (
           <View
-            style={{ flexDirection: "row", gap: 16, alignItems: "stretch" }}
+            style={{
+              flexDirection: "row",
+              gap: 16,
+              alignItems: "stretch",
+            }}
           >
             <View style={{ flex: 2 }}>{hero}</View>
+
             <View style={{ flex: 1 }}>{monthCard}</View>
           </View>
         ) : (
@@ -399,6 +506,8 @@ export default function EmployeeHome() {
 
         {tiles}
       </View>
+
+      <AIAssistantFab />
     </Screen>
   );
 }
