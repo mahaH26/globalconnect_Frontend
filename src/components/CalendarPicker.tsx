@@ -164,7 +164,7 @@ export default function CalendarPicker({
           <Pressable
             onPress={() => setOpen(false)}
             style={[
-              StyleSheet.absoluteFillObject,
+              StyleSheet.absoluteFill,
               { backgroundColor: "rgba(8,10,28,0.5)" },
             ]}
           />

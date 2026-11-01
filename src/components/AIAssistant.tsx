@@ -8,6 +8,7 @@ import {
   Animated,
   Easing,
   FlatList,
+  Image,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -28,19 +29,35 @@ interface Msg {
 const BOT_NAME = "Noor";
 const native = Platform.OS !== "web";
 
+// HR logo. File lives at <project root>/assets/logo/Hr.jpg
+// (this file is src/components/AIAssistant.tsx, so go up two levels).
+const LOGO = require("../../assets/logo/Hr.jpg");
+
+const FONT = Platform.select({
+  ios: "System",
+  android: "sans-serif",
+  default:
+    "Inter, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, system-ui, sans-serif",
+});
+
 let counter = 0;
 const nextId = () => `m${Date.now()}_${counter++}`;
 const clean = (s: string) => s.replace(/\*\*/g, "").replace(/^#+\s*/gm, "");
 
-function Character({ size = 64 }: { size?: number }) {
+/* Logo with a gentle float + pulse ring */
+function Logo({
+  size = 64,
+  animated = true,
+}: {
+  size?: number;
+  animated?: boolean;
+}) {
   const float = useRef(new Animated.Value(0)).current;
-  const blink = useRef(new Animated.Value(1)).current;
   const pulse = useRef(new Animated.Value(0)).current;
-  const antenna = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    if (!animated) return;
     const loops = [
-      // floating up and down
       Animated.loop(
         Animated.sequence([
           Animated.timing(float, {
@@ -57,34 +74,6 @@ function Character({ size = 64 }: { size?: number }) {
           }),
         ]),
       ),
-      // blinking eyes
-      Animated.loop(
-        Animated.sequence([
-          Animated.delay(2400),
-          Animated.timing(blink, {
-            toValue: 0.1,
-            duration: 110,
-            useNativeDriver: native,
-          }),
-          Animated.timing(blink, {
-            toValue: 1,
-            duration: 140,
-            useNativeDriver: native,
-          }),
-          Animated.delay(600),
-          Animated.timing(blink, {
-            toValue: 0.1,
-            duration: 110,
-            useNativeDriver: native,
-          }),
-          Animated.timing(blink, {
-            toValue: 1,
-            duration: 140,
-            useNativeDriver: native,
-          }),
-        ]),
-      ),
-      // pulse ring
       Animated.loop(
         Animated.timing(pulse, {
           toValue: 1,
@@ -93,29 +82,10 @@ function Character({ size = 64 }: { size?: number }) {
           useNativeDriver: native,
         }),
       ),
-      // antenna glow
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(antenna, {
-            toValue: 1,
-            duration: 700,
-            useNativeDriver: native,
-          }),
-          Animated.timing(antenna, {
-            toValue: 0,
-            duration: 700,
-            useNativeDriver: native,
-          }),
-        ]),
-      ),
     ];
     loops.forEach((l) => l.start());
     return () => loops.forEach((l) => l.stop());
-  }, [float, blink, pulse, antenna]);
-
-  const faceW = size * 0.62;
-  const faceH = size * 0.46;
-  const eye = size * 0.1;
+  }, [float, pulse, animated]);
 
   return (
     <Animated.View
@@ -128,45 +98,45 @@ function Character({ size = 64 }: { size?: number }) {
           {
             translateY: float.interpolate({
               inputRange: [0, 1],
-              outputRange: [0, -5],
+              outputRange: [0, animated ? -5 : 0],
             }),
           },
         ],
       }}
     >
-      {/* pulse ring */}
-      <Animated.View
-        pointerEvents="none"
-        style={{
-          position: "absolute",
-          width: size,
-          height: size,
-          borderRadius: size / 2,
-          backgroundColor: colors.primary,
-          opacity: pulse.interpolate({
-            inputRange: [0, 1],
-            outputRange: [0.35, 0],
-          }),
-          transform: [
-            {
-              scale: pulse.interpolate({
-                inputRange: [0, 1],
-                outputRange: [1, 1.7],
-              }),
-            },
-          ],
-        }}
-      />
-      {/* body */}
+      {animated ? (
+        <Animated.View
+          pointerEvents="none"
+          style={{
+            position: "absolute",
+            width: size,
+            height: size,
+            borderRadius: size / 2,
+            backgroundColor: colors.primary,
+            opacity: pulse.interpolate({
+              inputRange: [0, 1],
+              outputRange: [0.35, 0],
+            }),
+            transform: [
+              {
+                scale: pulse.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [1, 1.7],
+                }),
+              },
+            ],
+          }}
+        />
+      ) : null}
+
       <View
         style={{
           width: size,
           height: size,
           borderRadius: size / 2,
-          backgroundColor: colors.primary,
-          alignItems: "center",
-          justifyContent: "center",
-          borderWidth: 3,
+          backgroundColor: "#fff",
+          overflow: "hidden",
+          borderWidth: 2,
           borderColor: "#fff",
           shadowColor: "#000",
           shadowOpacity: 0.25,
@@ -175,56 +145,12 @@ function Character({ size = 64 }: { size?: number }) {
           elevation: 8,
         }}
       >
-        {/* antenna */}
-        <View
-          style={{
-            position: "absolute",
-            top: -size * 0.16,
-            alignItems: "center",
-          }}
-        >
-          <Animated.View
-            style={{
-              width: size * 0.14,
-              height: size * 0.14,
-              borderRadius: size * 0.07,
-              backgroundColor: "#FACC15",
-              opacity: antenna.interpolate({
-                inputRange: [0, 1],
-                outputRange: [0.5, 1],
-              }),
-            }}
-          />
-          <View
-            style={{ width: 2, height: size * 0.08, backgroundColor: "#fff" }}
-          />
-        </View>
-        {/* face */}
-        <View
-          style={{
-            width: faceW,
-            height: faceH,
-            borderRadius: faceH / 2.2,
-            backgroundColor: "#fff",
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: size * 0.14,
-          }}
-        >
-          {[0, 1].map((i) => (
-            <Animated.View
-              key={i}
-              style={{
-                width: eye,
-                height: eye * 1.5,
-                borderRadius: eye / 2,
-                backgroundColor: colors.navy,
-                transform: [{ scaleY: blink }],
-              }}
-            />
-          ))}
-        </View>
+        <Image
+          source={LOGO}
+          style={{ width: "100%", height: "100%" }}
+          resizeMode="cover"
+          accessibilityLabel="HR assistant logo"
+        />
       </View>
     </Animated.View>
   );
@@ -232,6 +158,12 @@ function Character({ size = 64 }: { size?: number }) {
 
 export function AIAssistantFab() {
   const [open, setOpen] = useState(false);
+  const { width } = useWindowDimensions();
+
+  // responsive button: 56 on small phones, up to 72 on large screens
+  const logoSize = width < 380 ? 52 : width < 700 ? 58 : 68;
+  const box = logoSize + 8;
+
   return (
     <>
       <Pressable
@@ -240,17 +172,17 @@ export function AIAssistantFab() {
         style={
           {
             position: Platform.OS === "web" ? "fixed" : "absolute",
-            right: 20,
-            bottom: 24,
+            right: width < 700 ? 14 : 20,
+            bottom: width < 700 ? 18 : 24,
             zIndex: 1000,
-            width: 72,
-            height: 72,
+            width: box,
+            height: box,
             alignItems: "center",
             justifyContent: "center",
           } as any
         }
       >
-        <Character size={64} />
+        <Logo size={logoSize} />
       </Pressable>
       <ChatModal visible={open} onClose={() => setOpen(false)} />
     </>
@@ -267,12 +199,14 @@ function ChatModal({
   const { user } = useAuth();
   const { width, height } = useWindowDimensions();
   const wide = width >= 700;
-  const firstName = user?.full_name?.trim().split(" ")[0] || "there";
+  const small = width < 380;
+  const firstName = user?.full_name?.trim().split(/\s+/)[0] || "there";
 
+  // Three separate lines, as requested
   const greeting: Msg = {
     id: "hello",
     role: "assistant",
-    content: `Welcome to Global Connect, ${firstName}! I'm ${BOT_NAME}, your AI HR assistant. How can I help you today?`,
+    content: `Hi ${firstName}, welcome!\nI'm ${BOT_NAME}, your AI HR assistant.\nHow can I help you today?`,
   };
 
   const [messages, setMessages] = useState<Msg[]>([]);
@@ -344,9 +278,9 @@ function ChatModal({
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : undefined}
           style={{
-            backgroundColor: "#F6F7FB",
+            backgroundColor: colors.bg,
             borderRadius: wide ? 20 : 0,
-            width: wide ? 640 : "100%",
+            width: wide ? Math.min(640, width - 48) : "100%",
             height: wide ? Math.min(760, height - 48) : "100%",
             overflow: "hidden",
           }}
@@ -355,7 +289,7 @@ function ChatModal({
           <View
             style={{
               backgroundColor: colors.navy,
-              paddingHorizontal: 16,
+              paddingHorizontal: small ? 12 : 16,
               paddingTop: wide ? 14 : 44,
               paddingBottom: 14,
               flexDirection: "row",
@@ -363,23 +297,27 @@ function ChatModal({
               gap: 12,
             }}
           >
-            <View
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: 20,
-                backgroundColor: colors.primary,
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <Ionicons name="sparkles" size={20} color="#fff" />
-            </View>
+            <Logo size={small ? 38 : 44} animated={false} />
             <View style={{ flex: 1 }}>
-              <Text style={{ color: "#fff", fontSize: 16, fontWeight: "700" }}>
+              <Text
+                style={{
+                  color: "#fff",
+                  fontSize: small ? 16 : 18,
+                  fontWeight: "700",
+                  fontFamily: FONT,
+                  letterSpacing: 0.3,
+                }}
+              >
                 {BOT_NAME}
               </Text>
-              <Text style={{ color: "#C9CDE8", fontSize: 12 }}>
+              <Text
+                style={{
+                  color: "#C9CDE8",
+                  fontSize: 12,
+                  fontFamily: FONT,
+                  letterSpacing: 0.2,
+                }}
+              >
                 AI HR Assistant
               </Text>
             </View>
@@ -393,15 +331,15 @@ function ChatModal({
             ref={listRef}
             data={data}
             keyExtractor={(m) => m.id}
-            contentContainerStyle={{ padding: 14, gap: 10 }}
+            contentContainerStyle={{ padding: small ? 10 : 14, gap: 10 }}
             style={{ flex: 1 }}
             ListFooterComponent={
               sending ? (
                 <View
                   style={{
                     alignSelf: "flex-start",
-                    backgroundColor: "#fff",
-                    borderRadius: 14,
+                    backgroundColor: colors.card,
+                    borderRadius: 16,
                     paddingHorizontal: 16,
                     paddingVertical: 12,
                   }}
@@ -416,15 +354,24 @@ function ChatModal({
                 <View
                   style={{
                     alignSelf: mine ? "flex-end" : "flex-start",
-                    maxWidth: "85%",
+                    maxWidth: wide ? "80%" : "88%",
                     backgroundColor: mine
                       ? colors.primary
                       : item.error
-                        ? "#FDE7EC"
-                        : "#fff",
-                    borderRadius: 14,
+                        ? colors.dangerSoft
+                        : colors.card,
+                    borderWidth: mine ? 0 : 1,
+                    borderColor: item.error ? colors.danger : colors.border,
+                    borderRadius: 16,
+                    borderBottomRightRadius: mine ? 4 : 16,
+                    borderBottomLeftRadius: mine ? 16 : 4,
                     paddingHorizontal: 14,
                     paddingVertical: 10,
+                    shadowColor: "#000",
+                    shadowOpacity: 0.05,
+                    shadowRadius: 4,
+                    shadowOffset: { width: 0, height: 1 },
+                    elevation: 1,
                   }}
                 >
                   <Text
@@ -433,10 +380,12 @@ function ChatModal({
                       color: mine
                         ? "#fff"
                         : item.error
-                          ? "#E11D48"
+                          ? colors.danger
                           : colors.text,
-                      fontSize: 15,
-                      lineHeight: 21,
+                      fontSize: small ? 14 : 15,
+                      lineHeight: small ? 20 : 22,
+                      fontFamily: FONT,
+                      letterSpacing: 0.15,
                     }}
                   >
                     {item.content}
@@ -453,29 +402,37 @@ function ChatModal({
               alignItems: "center",
               gap: 10,
               padding: 12,
+              paddingBottom: Platform.OS === "ios" && !wide ? 24 : 12,
               borderTopWidth: 1,
-              borderTopColor: "#E3E6F2",
-              backgroundColor: "#fff",
+              borderTopColor: colors.border,
+              backgroundColor: colors.card,
             }}
           >
             <TextInput
               value={text}
               onChangeText={setText}
               placeholder="Ask me anything about HR..."
-              placeholderTextColor="#8A90AD"
+              placeholderTextColor={colors.placeholder}
               maxLength={1000}
               returnKeyType="send"
               onSubmitEditing={() => send(text)}
               editable={!sending}
-              style={{
-                flex: 1,
-                backgroundColor: "#F2F4FA",
-                borderRadius: 12,
-                paddingHorizontal: 14,
-                paddingVertical: 10,
-                fontSize: 15,
-                color: colors.text,
-              }}
+              style={
+                {
+                  flex: 1,
+                  minWidth: 0,
+                  backgroundColor: colors.inputBg,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  borderRadius: 12,
+                  paddingHorizontal: 14,
+                  paddingVertical: 10,
+                  fontSize: 15,
+                  fontFamily: FONT,
+                  color: colors.text,
+                  ...(Platform.OS === "web" ? { outlineStyle: "none" } : null),
+                } as any
+              }
             />
             <Pressable
               onPress={() => send(text)}

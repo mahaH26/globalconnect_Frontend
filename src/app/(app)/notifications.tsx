@@ -10,7 +10,7 @@ import {
   listStyle,
 } from "@/components/ui";
 import { Notification, useNotifications } from "@/context/NotificationContext";
-import { colors } from "@/theme";
+import { colors, getMode } from "@/theme";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "expo-router";
 import type { ComponentProps } from "react";
@@ -18,8 +18,6 @@ import { useCallback, useState } from "react";
 import { FlatList, Pressable, Text, View } from "react-native";
 
 type IconName = ComponentProps<typeof Ionicons>["name"];
-
-const SOFT = "#5B6385";
 
 const when = (iso: string) =>
   new Date(iso).toLocaleString("en-GB", {
@@ -30,11 +28,6 @@ const when = (iso: string) =>
     timeZone: "Asia/Bahrain",
   });
 
-/**
- * Admin notifications start with the employee's name ("t checked in late at 14:32.",
- * "TEST: Maha hafeez requested 3 day(s)"). Notifications about yourself start with "You".
- * Used only when the API doesn't send the name itself.
- */
 const subjectFromMessage = (msg?: string | null) => {
   const text = (msg ?? "").trim();
   if (!text || /^(you|your)\b/i.test(text)) return null;
@@ -57,7 +50,11 @@ const iconFor = (title: string): { name: IconName; fg: string; bg: string } => {
       bg: colors.dangerSoft,
     };
   if (t.includes("leave"))
-    return { name: "calendar-outline", fg: colors.navy, bg: colors.navySoft };
+    return {
+      name: "calendar-outline",
+      fg: colors.navyText,
+      bg: colors.navySoft,
+    };
   return {
     name: "notifications-outline",
     fg: colors.primary,
@@ -77,6 +74,12 @@ export default function NotificationsScreen() {
   } = useNotifications();
   const [confirmClear, setConfirmClear] = useState(false);
 
+  // The screen remounts when the theme changes (ThemeKey), so reading the mode
+  // here always matches the current colours.
+  const dark = getMode() === "dark";
+  const unreadBg = dark ? colors.accentSoft : "#FFF7FA";
+  const unreadBorder = dark ? colors.hoverBorder : "#F9D6E3";
+
   // Refresh every time the screen is opened (it is reached from the header bell)
   useFocusEffect(
     useCallback(() => {
@@ -94,6 +97,8 @@ export default function NotificationsScreen() {
   const renderItem = ({ item }: { item: Notification }) => {
     const subject = item.userName ?? subjectFromMessage(item.message);
     const ic = iconFor(item.title);
+    const cardBg = item.isRead ? colors.card : unreadBg;
+
     return (
       <Card
         style={{
@@ -102,8 +107,8 @@ export default function NotificationsScreen() {
           alignItems: "flex-start",
           gap: 12,
           padding: 16,
-          backgroundColor: item.isRead ? colors.card : "#FFF7FA",
-          borderColor: item.isRead ? colors.border : "#F9D6E3",
+          backgroundColor: cardBg,
+          borderColor: item.isRead ? colors.border : unreadBorder,
         }}
       >
         <View>
@@ -130,7 +135,7 @@ export default function NotificationsScreen() {
                 borderRadius: 5,
                 backgroundColor: colors.primary,
                 borderWidth: 2,
-                borderColor: "#FFF7FA",
+                borderColor: cardBg,
               }}
             />
           )}
@@ -141,13 +146,13 @@ export default function NotificationsScreen() {
             style={{
               fontSize: 14,
               fontStyle: "italic",
-              fontWeight: item.isRead ? "500" : "600",
-              color: colors.text,
+              fontWeight: item.isRead ? "500" : "700",
+              color: colors.heading,
             }}
           >
             {item.title}
             {subject ? (
-              <Text style={{ fontWeight: "400", color: SOFT }}>
+              <Text style={{ fontWeight: "400", color: colors.soft }}>
                 {" "}
                 from{" "}
                 <Text style={{ fontWeight: "600", color: colors.primary }}>
@@ -159,7 +164,7 @@ export default function NotificationsScreen() {
           {item.message ? (
             <Text
               style={{
-                color: SOFT,
+                color: colors.soft,
                 fontStyle: "italic",
                 fontSize: 13,
                 lineHeight: 18,
@@ -185,7 +190,7 @@ export default function NotificationsScreen() {
             borderRadius: 14,
             alignItems: "center",
             justifyContent: "center",
-            backgroundColor: s.hovered ? "#F4F5FA" : "transparent",
+            backgroundColor: s.hovered ? colors.hover : "transparent",
           })}
         >
           <Ionicons name="close" size={16} color={colors.muted} />
